@@ -6,6 +6,7 @@ In-app help for Laravel applications. Codex serves help articles from Markdown f
 [![Livewire 3 and 4](https://img.shields.io/badge/LIVEWIRE-3%20%7C%204-FB70A9?style=flat-square)](https://livewire.laravel.com)
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/finity-labs/lin-codex.svg?style=flat-square)](https://packagist.org/packages/finity-labs/lin-codex)
 [![Tests](https://github.com/finity-labs/lin-codex/actions/workflows/tests.yml/badge.svg)](https://github.com/finity-labs/lin-codex/actions/workflows/tests.yml)
+[![Total Downloads](https://img.shields.io/packagist/dt/finity-labs/lin-codex.svg?style=flat-square)](https://packagist.org/packages/finity-labs/lin-codex)
 [![License](https://img.shields.io/packagist/l/finity-labs/lin-codex.svg?style=flat-square)](https://packagist.org/packages/finity-labs/lin-codex)
 
 ## What it does
