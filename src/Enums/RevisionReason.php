@@ -13,4 +13,7 @@ enum RevisionReason: int
     case Manual = 1;
     case Import = 2;
     case AiRewrite = 3;
+
+    /** The snapshot restore() takes before swapping a revision back in. */
+    case Restore = 4;
 }

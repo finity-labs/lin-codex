@@ -17,8 +17,8 @@ use Illuminate\View\Component;
  * current page has, taken from the same request-scoped PageHelpResolver
  * the drawer's mount() reads, so the count is server-rendered, visible
  * without JavaScript and always equal to the drawer's page list. A host
- * may override the count, hide the badge, or pass the page class and panel
- * id it also gives the drawer.
+ * may override the count, hide the badge, or pass the page class, panel
+ * id and guard it also gives the drawer.
  */
 final class HelpButton extends Component
 {
@@ -30,6 +30,7 @@ final class HelpButton extends Component
         public ?int $count = null,
         public ?string $pageClass = null,
         public ?string $panelId = null,
+        public ?string $guard = null,
     ) {}
 
     /**
@@ -41,7 +42,7 @@ final class HelpButton extends Component
             return 0;
         }
 
-        return $this->count ?? $this->resolver->for($this->pageClass, $this->panelId)->count();
+        return $this->count ?? $this->resolver->for($this->pageClass, $this->panelId, null, $this->guard)->count();
     }
 
     public function render(): View

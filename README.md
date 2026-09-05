@@ -124,6 +124,8 @@ Link to another article with its relative file path, optionally with a section. 
 See [Roles](roles.md) and [Invoices](../billing/invoices.md#totals).
 ```
 
+From code, `FinityLabs\LinCodex\Rendering\ArticlePath::href('users/roles', 'reset-a-password')` gives `/help/users/roles#reset-a-password`, with or without the leading `#` on the heading.
+
 ### Headings
 
 Every heading from `##` down gets an id from its text and a `#` permalink: `## Reset a password` gives `#reset-a-password`. Duplicate headings get `-2`, `-3` suffixes. Second- and third-level headings make up the table of contents.
@@ -314,7 +316,7 @@ A revision doesn't hold the excerpt, keywords, contexts or any other metadata. N
 
 ### Reasons and authors
 
-The reason is `manual` (the default), `import` (`codex:import --force` overwriting an existing article) or `ai_rewrite` (reserved for fin-codex). The author is the authenticated user of the configured guard when there is one, and `null` otherwise, which is what a console command records unless it's given `--user`. Host code that saves translations on someone's behalf says so explicitly:
+The reason is `manual` (the default), `import` (`codex:import --force` overwriting an existing article), `restore` (the snapshot `restore()` takes of the current content before swapping a revision in) or `ai_rewrite` (reserved for fin-codex). The author is the authenticated user of the configured guard when there is one, and `null` otherwise, which is what a console command records unless it's given `--user`. Host code that saves translations on someone's behalf says so explicitly:
 
 ```php
 use FinityLabs\LinCodex\Enums\RevisionReason;
@@ -332,7 +334,7 @@ The scopes nest and the innermost wins: an `attributing()` inside `withoutRevisi
 app(RevisionManager::class)->restore($revision, $userId);
 ```
 
-`restore()` snapshots the current content first, with reason `manual` and the given author, then puts the revision's title, body and format back. A translation deleted since the revision was taken is recreated from it. Because of that snapshot a restore is itself undoable: restore the newest revision to go back.
+`restore()` snapshots the current content first, with reason `restore` and the given author, then puts the revision's title, body and format back. A translation deleted since the revision was taken is recreated from it. Because of that snapshot a restore is itself undoable: restore the newest revision to go back.
 
 ### Commands
 
@@ -447,7 +449,7 @@ php artisan vendor:publish --tag=lin-codex-react
 php artisan vendor:publish --tag=lin-codex-vue
 ```
 
-The tags are alternatives and both land in `resources/js/codex`: `types.ts` (the payloads as TypeScript types), `codex.ts` (a fetch client over the four endpoints), `HelpButton` and `HelpDrawer` (`.tsx` or `.vue`), and a README. The drawer opens on the button, on `Ctrl+/`, on a `codex:open` window event with an optional slug and on a `?codex=slug` query parameter; it shows the current page's articles first, then search and the tree, and renders an article with the fallback notice when it came from another language.
+The tags are alternatives and both land in `resources/js/codex`: `types.ts` (the payloads as TypeScript types), `codex.ts` (a fetch client over the four endpoints), `HelpButton` and `HelpDrawer` (`.tsx` or `.vue`), and a README. The drawer opens on the button, on `Ctrl+/`, on a `codex:open` window event with an optional slug and heading and on a `?codex=slug#heading` query parameter, and `openCodex(slug, heading)` dispatches that event from your own code; it shows the current page's articles first, then search and the tree, and renders an article with the fallback notice when it came from another language.
 
 The drawer learns which page it is on from Inertia shared props. Share the prefix and the page context from `HandleInertiaRequests`:
 
@@ -494,6 +496,7 @@ Both components work on guest layouts (login, registration, password reset) and 
 - `badge` shows how many articles the current page has; `:badge="false"` hides it. Zero hides it too.
 - `count` overrides the number.
 - `page-class` and `panel-id` are what fin-codex passes for a Filament resource and its panel; give the drawer the same values.
+- `guard` is the auth guard the badge counts for; fin-codex passes the panel's guard. Unset means `lin-codex.auth.guard`, then the app default.
 
 Host classes and attributes merge onto the anchor. The count is resolved once per request and shared with the drawer, so the badge and the drawer's page list always agree. Without JavaScript the button is a plain link to the help center.
 
@@ -503,13 +506,13 @@ Host classes and attributes merge onto the anchor. The count is resolved once pe
 
 Links inside an article: `data-codex-article` links (the relative `.md` links the renderer resolves) open in place, other same-host links close the drawer and navigate, external links open in a new tab. Images with the lightbox hook open in a lightbox. Search runs as you type with a 300 ms debounce, and a refused search shows the rate-limit line with the seconds to wait.
 
-Page context, locale and page articles are captured once at mount as locked state: searching and browsing never re-read the request, and the client cannot change them. Props: `slug` opens the drawer on that article as soon as the page loads, `page-class` and `panel-id` as for the button, `locale` overrides the resolved language.
+Page context, locale and page articles are captured once at mount as locked state: searching and browsing never re-read the request, and the client cannot change them. Props: `slug` opens the drawer on that article as soon as the page loads, `page-class` and `panel-id` as for the button, `locale` overrides the resolved language, `guard` is the auth guard the drawer reads articles for (same meaning as on the button, captured at mount like `locale`), `shortcut` is this drawer's keyboard shortcut (unset means `lin-codex.ui.shortcut`; an empty string or `null` disables it for this drawer) and `width` is the panel width in pixels (unset means `lin-codex.ui.drawer_width`). Because these are props, not config, two drawers on one site, or two Filament panels, can differ in guard, shortcut and width.
 
 ### Opening it from anywhere
 
-- The keyboard shortcut in `lin-codex.ui.shortcut`, default `ctrl+/`. Cmd counts as Ctrl on a Mac. `null` disables it. It is ignored while typing in an input, textarea, select or editable element, and it toggles: pressing it again closes the drawer.
-- `window.dispatchEvent(new CustomEvent('codex:open', { detail: { slug: 'users/roles' } }))` from any script; leave `detail` out to open on the page's articles.
-- `?codex=users/roles` on any URL that renders the drawer. The parameter is read once on load and removed with `history.replaceState`.
+- The keyboard shortcut in `lin-codex.ui.shortcut`, default `ctrl+/`, or the drawer's `shortcut` prop. Cmd counts as Ctrl on a Mac. `null` disables it. It is ignored while typing in an input, textarea, select or editable element, and it toggles: pressing it again closes the drawer.
+- `window.dispatchEvent(new CustomEvent('codex:open', { detail: { slug: 'users/roles', heading: 'reset-a-password' } }))` from any script; leave `detail` out to open on the page's articles. `heading` is optional and scrolls to that heading id once the article has rendered; a heading without a slug is ignored, an unknown heading opens the article at the top.
+- `?codex=users/roles#reset-a-password` on any URL that renders the drawer. Both the parameter and the hash are read once on load and removed with `history.replaceState`.
 
 Escape and a click on the overlay close it. Focus moves to the search box on open and returns to the element that opened the drawer on close.
 

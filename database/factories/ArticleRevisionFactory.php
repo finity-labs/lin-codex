@@ -46,6 +46,11 @@ class ArticleRevisionFactory extends Factory
         return $this->state(fn (): array => ['reason' => RevisionReason::AiRewrite]);
     }
 
+    public function restore(): static
+    {
+        return $this->state(fn (): array => ['reason' => RevisionReason::Restore]);
+    }
+
     public function byUser(int $userId): static
     {
         return $this->state(fn (): array => ['user_id' => $userId]);

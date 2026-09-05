@@ -12,6 +12,7 @@ use FinityLabs\LinCodex\Reading\ReadArticle;
 use FinityLabs\LinCodex\Reading\TreeBuilder;
 use FinityLabs\LinCodex\View\PageHelpResolver;
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -54,9 +55,34 @@ final class HelpDrawer extends Component
 
     public ?string $slug = null;
 
-    public function mount(PageHelpResolver $resolver, ?string $slug = null, ?string $pageClass = null, ?string $panelId = null, ?string $locale = null): void
+    /** Keyboard shortcut of this drawer, resolved once at mount; null disables it. */
+    #[Locked]
+    public ?string $shortcut = null;
+
+    /** Panel width in pixels, resolved once at mount. */
+    #[Locked]
+    public ?int $width = null;
+
+    /**
+     * Shortcut and width are read here, once, and never again from config:
+     * a request-time config()->set() outlives the request under Octane and
+     * in in-process test requests, so only a value locked at mount survives
+     * every later Livewire request for this drawer alone.
+     *
+     * $shortcut: false (the default) means "not passed", so the configured
+     * lin-codex.ui.shortcut applies; a string sets it for this drawer; '' or
+     * null disables it. The sentinel lives on the mount argument only,
+     * because Livewire fills an omitted argument from its default and a
+     * null default could not tell "omitted" from "passed null". Livewire
+     * also copies a tag parameter named shortcut onto the public property
+     * before mount(); the assignment below overwrites it.
+     */
+    public function mount(PageHelpResolver $resolver, ?string $slug = null, ?string $pageClass = null, ?string $panelId = null, ?string $locale = null, ?string $guard = null, string|false|null $shortcut = false, ?int $width = null): void
     {
-        $this->capturePageHelp($resolver, $pageClass, $panelId, $locale);
+        $this->capturePageHelp($resolver, $pageClass, $panelId, $locale, $guard);
+
+        $this->shortcut = $shortcut === false ? $this->configuredShortcut() : $this->normaliseShortcut($shortcut);
+        $this->width = $width ?? (int) config('lin-codex.ui.drawer_width', 480);
 
         if ($slug !== null) {
             $this->open($slug);
@@ -215,8 +241,6 @@ final class HelpDrawer extends Component
             default => __('lin-codex::lin-codex.ui.this_page'),
         };
 
-        $width = (int) config('lin-codex.ui.drawer_width', 480);
-
         return view('lin-codex::livewire.help-drawer', [
             'read' => $read,
             'fallbackNotice' => $fallbackNotice,
@@ -224,8 +248,8 @@ final class HelpDrawer extends Component
             'result' => $result,
             'nodes' => $nodes,
             'title' => $title,
-            'options' => ['shortcut' => $this->shortcut(), 'width' => $width],
-            'width' => $width,
+            'options' => ['shortcut' => $this->shortcut, 'width' => $this->width],
+            'width' => $this->width,
             'helpCenterUrl' => route('lin-codex.help-center'),
         ]);
     }
@@ -243,10 +267,19 @@ final class HelpDrawer extends Component
      * The configured shortcut as a string, or null when it is unset or not a
      * string (which disables it in the Alpine glue).
      */
-    private function shortcut(): ?string
+    private function configuredShortcut(): ?string
     {
         $shortcut = config('lin-codex.ui.shortcut');
 
-        return is_string($shortcut) && trim($shortcut) !== '' ? $shortcut : null;
+        return is_string($shortcut) ? $this->normaliseShortcut($shortcut) : null;
+    }
+
+    /**
+     * A shortcut passed to mount: the string itself, or null for an empty
+     * or blank one (which disables it in the Alpine glue).
+     */
+    private function normaliseShortcut(?string $shortcut): ?string
+    {
+        return $shortcut !== null && trim($shortcut) !== '' ? $shortcut : null;
     }
 }

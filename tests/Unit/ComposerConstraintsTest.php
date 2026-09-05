@@ -32,6 +32,6 @@ it('pins the locked dev constraint for :dataset', function (string $package, str
     'pestphp/pest-plugin-laravel' => ['pestphp/pest-plugin-laravel', '^3.0|^4.0'],
 ]);
 
-it('keeps dev-main aliased to 0.1.x-dev so fin-codex can require ^0.1 through a path repository', function () {
-    expect(linCodexComposerJson()['extra']['branch-alias']['dev-main'] ?? null)->toBe('0.1.x-dev');
+it('keeps dev-main aliased to 0.2.x-dev so fin-codex can require ^0.2 through a path repository', function () {
+    expect(linCodexComposerJson()['extra']['branch-alias']['dev-main'] ?? null)->toBe('0.2.x-dev');
 });

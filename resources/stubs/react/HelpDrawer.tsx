@@ -5,7 +5,8 @@
  * package stylesheet applies when the app includes it.
  *
  * Opens on HelpButton, on Ctrl+/, on a "codex:open" window event (detail
- * { slug? }) and on a ?codex=slug query parameter read once on mount.
+ * { slug?, heading? }) and on a ?codex=slug#heading query parameter read
+ * once on mount; a heading scrolls the article body to that heading id.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -50,8 +51,8 @@ const DEFAULT_LABELS: HelpDrawerLabels = {
 const DEFAULT_FALLBACK_NOTICE = 'This article is not yet available in your language. Showing another language version.'
 
 /** Opens the drawer from anywhere in the app, on the given article when a slug is passed. */
-export function openCodex(slug?: string): void {
-  window.dispatchEvent(new CustomEvent('codex:open', { detail: { slug } }))
+export function openCodex(slug?: string, heading?: string): void {
+  window.dispatchEvent(new CustomEvent('codex:open', { detail: { slug, heading } }))
 }
 
 export function HelpDrawer({ prefix, context, locale, fallbackNotice = DEFAULT_FALLBACK_NOTICE, labels }: HelpDrawerProps) {
@@ -70,6 +71,8 @@ export function HelpDrawer({ prefix, context, locale, fallbackNotice = DEFAULT_F
 
   const articleRequest = useRef(0)
   const deepLinked = useRef(false)
+  const pendingHeading = useRef('')
+  const bodyRef = useRef<HTMLDivElement>(null)
 
   const openArticle = useCallback(
     async (slug: string) => {
@@ -94,9 +97,10 @@ export function HelpDrawer({ prefix, context, locale, fallbackNotice = DEFAULT_F
     [client],
   )
 
-  // With no slug the drawer opens on the current page's first article.
+  // With no slug the drawer opens on the current page's first article; a heading without a slug is ignored.
   const openDrawer = useCallback(
-    (slug?: string) => {
+    (slug?: string, heading?: string) => {
+      pendingHeading.current = slug && heading ? heading : ''
       const target = slug ?? pageArticles[0]?.slug
       if (target) {
         void openArticle(target)
@@ -127,8 +131,19 @@ export function HelpDrawer({ prefix, context, locale, fallbackNotice = DEFAULT_F
     if (deepLinked.current) return
     deepLinked.current = true
     const slug = new URLSearchParams(window.location.search).get('codex')
-    if (slug) void openArticle(slug)
+    if (!slug) return
+    pendingHeading.current = window.location.hash.replace(/^#/, '')
+    window.history.replaceState(null, '', window.location.pathname)
+    void openArticle(slug)
   }, [openArticle])
+
+  // The pending heading is scrolled to once the article body has rendered; a missing id leaves the article at the top.
+  useEffect(() => {
+    const heading = pendingHeading.current
+    if (!article || !heading) return
+    pendingHeading.current = ''
+    bodyRef.current?.querySelector('#' + CSS.escape(heading))?.scrollIntoView({ block: 'start' })
+  }, [article])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -140,7 +155,10 @@ export function HelpDrawer({ prefix, context, locale, fallbackNotice = DEFAULT_F
         setOpen(false)
       }
     }
-    const onOpen = (event: Event) => openDrawer((event as CustomEvent<{ slug?: string }>).detail?.slug)
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<{ slug?: string; heading?: string }>).detail
+      openDrawer(detail?.slug, detail?.heading)
+    }
 
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('codex:open', onOpen)
@@ -316,6 +334,7 @@ export function HelpDrawer({ prefix, context, locale, fallbackNotice = DEFAULT_F
                         </ul>
                       )}
                       <div
+                        ref={bodyRef}
                         className="codex-article-body"
                         lang={article.data.locale}
                         dangerouslySetInnerHTML={{ __html: article.data.html }}

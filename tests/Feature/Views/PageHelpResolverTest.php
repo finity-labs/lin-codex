@@ -7,6 +7,7 @@ use FinityLabs\LinCodex\Settings\CodexSettings;
 use FinityLabs\LinCodex\View\PageHelp;
 use FinityLabs\LinCodex\View\PageHelpResolver;
 use Illuminate\Auth\GenericUser;
+use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -108,6 +109,38 @@ it('flags fallback entries', function (): void {
     expect($articles)->toBe([
         ['slug' => 'guide', 'title' => 'Anleitung', 'excerpt' => null, 'isFallback' => false],
         ['slug' => 'tips', 'title' => 'Tips', 'excerpt' => null, 'isFallback' => true],
+    ]);
+});
+
+// The staff guard carries a user while the default web guard stays a guest,
+// set on the guard directly: actingAs() would call shouldUse() and move the
+// default guard, and the "omitted guard" half would then pass for the wrong
+// reason.
+it('memoises per guard and never shares an entry between two guards', function (): void {
+    config()->set('auth.guards.staff', ['driver' => 'session', 'provider' => 'users']);
+    app(AuthFactory::class)->guard('staff')->setUser(new GenericUser(['id' => 2]));
+
+    Route::get('/ui-page', function (): array {
+        $resolver = app(PageHelpResolver::class);
+        $staff = $resolver->for(null, null, null, 'staff');
+        $guest = $resolver->for();
+
+        return [
+            'staffMemoised' => $staff === $resolver->for(null, null, null, 'staff'),
+            'guestMemoised' => $guest === $resolver->for(),
+            'shared' => $staff === $guest,
+            'staff' => array_column($staff->articles, 'slug'),
+            'guest' => array_column($guest->articles, 'slug'),
+        ];
+    })->middleware('web');
+    linCodexPageHelpUseDocs('docs-ui');
+
+    expect($this->get('/ui-page')->assertOk()->json())->toBe([
+        'staffMemoised' => true,
+        'guestMemoised' => true,
+        'shared' => false,
+        'staff' => ['guide', 'members-only', 'tips'],
+        'guest' => ['guide', 'tips'],
     ]);
 });
 

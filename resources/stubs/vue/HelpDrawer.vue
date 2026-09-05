@@ -6,16 +6,17 @@
  * stylesheet applies when the app includes it.
  *
  * Opens on HelpButton, on Ctrl+/, on a "codex:open" window event (detail
- * { slug? }) and on a ?codex=slug query parameter read once on mount.
+ * { slug?, heading? }) and on a ?codex=slug#heading query parameter read
+ * once on mount; a heading scrolls the article body to that heading id.
  */
 
 import { defineComponent, h } from 'vue'
 import type { PropType, VNode } from 'vue'
 import type { TreeNode } from './types'
 
-/** Opens the drawer from anywhere in the app, on the given article when a slug is passed. */
-export function openCodex(slug?: string): void {
-  window.dispatchEvent(new CustomEvent('codex:open', { detail: { slug } }))
+/** Opens the drawer from anywhere in the app, on the given article when a slug is passed, at the heading when one is passed too. */
+export function openCodex(slug?: string, heading?: string): void {
+  window.dispatchEvent(new CustomEvent('codex:open', { detail: { slug, heading } }))
 }
 
 /** The recursive tree list, as a render function because a template cannot nest itself. */
@@ -46,7 +47,7 @@ const CodexTree = defineComponent({
 </script>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createCodexClient } from './codex'
 import type { Article, ArticleMeta, ContextArticle, Envelope, PageContext, SearchOutcome, TreeNode } from './types'
 
@@ -105,8 +106,10 @@ const results = ref<SearchOutcome | null>(null)
 const tree = ref<TreeNode[] | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const bodyElement = ref<HTMLElement | null>(null)
 
 let articleRequest = 0
+let pendingHeading = ''
 let searchRequest = 0
 let searchTimer: number | undefined
 
@@ -134,8 +137,9 @@ async function openArticle(slug: string): Promise<void> {
   }
 }
 
-// With no slug the drawer opens on the current page's first article.
-function openDrawer(slug?: string): void {
+// With no slug the drawer opens on the current page's first article; a heading without a slug is ignored.
+function openDrawer(slug?: string, heading?: string): void {
+  pendingHeading = slug && heading ? heading : ''
   const target = slug ?? pageArticles.value[0]?.slug
   if (target) {
     void openArticle(target)
@@ -202,8 +206,17 @@ function onKeyDown(event: KeyboardEvent): void {
 }
 
 function onOpenEvent(event: Event): void {
-  openDrawer((event as CustomEvent<{ slug?: string }>).detail?.slug)
+  const detail = (event as CustomEvent<{ slug?: string; heading?: string }>).detail
+  openDrawer(detail?.slug, detail?.heading)
 }
+
+// The pending heading is scrolled to once the article body has rendered; a missing id leaves the article at the top.
+watch(article, (loaded) => {
+  const heading = pendingHeading
+  if (!loaded || !heading) return
+  pendingHeading = ''
+  void nextTick(() => bodyElement.value?.querySelector('#' + CSS.escape(heading))?.scrollIntoView({ block: 'start' }))
+})
 
 watch(client, () => void loadContext(), { immediate: true })
 
@@ -228,7 +241,10 @@ onMounted(() => {
   window.addEventListener('codex:open', onOpenEvent)
 
   const slug = new URLSearchParams(window.location.search).get('codex')
-  if (slug) void openArticle(slug)
+  if (!slug) return
+  pendingHeading = window.location.hash.replace(/^#/, '')
+  window.history.replaceState(null, '', window.location.pathname)
+  void openArticle(slug)
 })
 
 onBeforeUnmount(() => {
@@ -307,7 +323,7 @@ onBeforeUnmount(() => {
                 </li>
               </ul>
               <!-- The html is sanitized by the server; article links inside it open in place. -->
-              <div class="codex-article-body" :lang="article.data.locale" v-html="article.data.html" @click="onBodyClick" />
+              <div ref="bodyElement" class="codex-article-body" :lang="article.data.locale" v-html="article.data.html" @click="onBodyClick" />
               <ul v-if="article.data.related.length > 0" class="codex-related">
                 <li v-for="entry in article.data.related" :key="entry.slug">
                   <button type="button" class="codex-related-link" @click="openArticle(entry.slug)">{{ entry.title }}</button>

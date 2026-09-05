@@ -65,7 +65,7 @@ beforeEach(function (): void {
     linCodexRestoreSetEnabled(true);
 });
 
-it('snapshots the current content with reason manual and the given user, then swaps title and body', function (): void {
+it('snapshots the current content with reason restore and the given user, then swaps title and body', function (): void {
     [$article, , $revision] = linCodexRestoreFixture();
     $userId = linCodexRestoreUser();
 
@@ -80,9 +80,24 @@ it('snapshots the current content with reason manual and the given user, then sw
         ->and($article->revisions()->count())->toBe(2)
         ->and($newest?->title)->toBe('New')
         ->and($newest?->body)->toBe('New body')
-        ->and($newest?->reason)->toBe(RevisionReason::Manual)
+        ->and($newest?->reason)->toBe(RevisionReason::Restore)
         ->and($newest?->user_id)->toBe($userId)
         ->and($newest?->is($revision))->toBeFalse();
+});
+
+it('keeps save-hook revisions Manual after a restore', function (): void {
+    [$article, , $revision] = linCodexRestoreFixture();
+
+    $restored = app(RevisionManager::class)->restore($revision, null);
+
+    $restored->fill(['body' => 'Edited after restore'])->save();
+
+    $newest = $article->revisions()->orderByDesc('id')->first();
+
+    expect($article->revisions()->count())->toBe(3)
+        ->and($newest?->body)->toBe('Old body')
+        ->and($newest?->reason)->toBe(RevisionReason::Manual)
+        ->and($article->revisions()->where('reason', RevisionReason::Restore)->count())->toBe(1);
 });
 
 it('restores the format onto the article without a further revision', function (): void {

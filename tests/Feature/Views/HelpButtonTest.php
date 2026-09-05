@@ -9,6 +9,7 @@ use FinityLabs\LinCodex\Sources\DatabaseSource;
 use FinityLabs\LinCodex\Sources\FilesystemSource;
 use FinityLabs\LinCodex\View\PageHelpResolver;
 use Illuminate\Auth\GenericUser;
+use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
@@ -120,6 +121,71 @@ it('shares one resolution with the drawer for a signed-in user', function (): vo
     $content = (string) $this->get('/ui-page')->assertOk()->getContent();
 
     expect($content)->toContain('codex-help-button__badge', '>3<', 'data-codex-page-count="3"', 'members-only');
+});
+
+/**
+ * A second guard with a user while the default web guard stays a guest,
+ * set on the guard directly: actingAs() would call shouldUse() and move the
+ * default guard, so the "omitted guard" render would pass for the wrong
+ * reason.
+ */
+function linCodexHelpButtonSignInOnStaff(): void
+{
+    config()->set('auth.guards.staff', ['driver' => 'session', 'provider' => 'users']);
+    app(AuthFactory::class)->guard('staff')->setUser(new GenericUser(['id' => 2]));
+}
+
+it('resolves the badge through the guard prop and shares nothing between two guards', function (): void {
+    linCodexHelpButtonUseDocs('docs-ui');
+    linCodexHelpButtonSignInOnStaff();
+
+    // Every docs-ui context is a url:/ui-page match, so the three renders
+    // share the path and pick their markup from the query string.
+    Route::get('/ui-page', fn () => Blade::render(match (request()->query('render')) {
+        'staff' => '<x-lin-codex::help-button guard="staff" />',
+        'both' => '<x-lin-codex::help-button guard="staff" /><x-lin-codex::help-button />',
+        default => '<x-lin-codex::help-button />',
+    }))->middleware('web');
+
+    expect((string) $this->get('/ui-page?render=staff')->assertOk()->getContent())->toContain('>3<')
+        ->and((string) $this->get('/ui-page')->assertOk()->getContent())->toContain('>2<')
+        ->and((string) $this->get('/ui-page?render=both')->assertOk()->getContent())->toContain('>3<', '>2<');
+});
+
+it('shares one resolution with the drawer on a guard', function (): void {
+    linCodexHelpButtonUseDocs('docs-ui');
+    linCodexHelpButtonSignInOnStaff();
+
+    Route::get('/ui-page', fn () => Blade::render('<x-lin-codex::help-button guard="staff" /><x-lin-codex::help-drawer guard="staff" />'))->middleware('web');
+
+    $content = (string) $this->get('/ui-page')->assertOk()->getContent();
+
+    expect($content)->toContain('codex-help-button__badge', '>3<', 'data-codex-page-count="3"', '&quot;guard&quot;:&quot;staff&quot;', 'members-only');
+});
+
+it('forwards guard, shortcut and width through the wrapper and lets two drawers differ', function (): void {
+    linCodexHelpButtonSignInOnStaff();
+
+    $this->blade('<x-lin-codex::help-drawer :width="360" shortcut="ctrl+." guard="staff" /><x-lin-codex::help-drawer :width="640" shortcut="" />')
+        ->assertSeeHtml('--codex-drawer-width: 360px')
+        ->assertSeeHtml('--codex-drawer-width: 640px')
+        ->assertSee(__('lin-codex::lin-codex.ui.shortcut_hint', ['shortcut' => 'ctrl+.']))
+        ->assertSeeHtml('shortcut\u0022:null')
+        ->assertSeeHtml('&quot;guard&quot;:&quot;staff&quot;');
+
+    // An omitted shortcut never reaches the Livewire tag, so the configured one survives.
+    $this->blade('<x-lin-codex::help-drawer />')
+        ->assertSeeHtml('--codex-drawer-width: 480px')
+        ->assertSeeHtml('ctrl+\\\\\/')
+        ->assertDontSeeHtml('shortcut\u0022:null');
+
+    $this->blade('<x-lin-codex::help-drawer locale="de" shortcut="" />')
+        ->assertSeeHtml('&quot;locale&quot;:&quot;de&quot;')
+        ->assertSeeHtml('shortcut\u0022:null');
+
+    $this->blade('<x-lin-codex::help-drawer locale="de" />')
+        ->assertSeeHtml('&quot;locale&quot;:&quot;de&quot;')
+        ->assertSeeHtml('ctrl+\\\\\/');
 });
 
 it('passes page class and panel id through both components', function (): void {

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-05
+
+### Added
+
+- `guard` prop on `<x-lin-codex::help-drawer>`, `<x-lin-codex::help-button>` and the `lin-codex.help-drawer` component; it reaches `ViewerResolver` through `CapturesPageHelp::viewer()` and `PageHelpResolver`, whose memo is now keyed by guard too.
+- `shortcut` and `width` props on the drawer, defaulting to `lin-codex.ui.shortcut` and `lin-codex.ui.drawer_width`; an empty string or `null` disables the shortcut for that drawer.
+- A heading in `codex:open` (`detail.heading`) and in the deep link (`?codex=slug#heading`); the drawer scrolls to it once the article has rendered, and `ArticlePath::href()` accepts a bare heading id.
+- `openCodex(slug, heading)` and the same heading contract in the React and Vue stubs.
+- German and Hungarian translations, with a key-parity test against the English file.
+- `RevisionReason::Restore`, recorded on the snapshot `restore()` takes (was `Manual`).
+- `ArticleRevisionFactory::restore()`.
+
+### Fixed
+
+- `TableNameOverrideTest` no longer depends on test order on a persistent database: the harness kept dropping the wrong signature's tables after `markPackageSchemaDirty()`.
+
 ## [0.1.1] - 2026-09-05
 
 ### Changed

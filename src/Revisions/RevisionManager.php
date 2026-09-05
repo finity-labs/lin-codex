@@ -38,8 +38,8 @@ use Spatie\LaravelSettings\Exceptions\MissingSettings;
  * viewer when there is one and by nobody in console.
  *
  * snapshot() stores on request whatever the switch says and restore()
- * uses it: the current content is snapshotted first, then title, body and
- * format are swapped in under withoutRevisions(). The keep count is per
+ * uses it: the current content is snapshotted first with reason Restore,
+ * then title, body and format are swapped in under withoutRevisions(). The keep count is per
  * article and locale, so ten English edits never evict a German revision.
  */
 final class RevisionManager
@@ -140,7 +140,7 @@ final class RevisionManager
     /**
      * Put a revision's title, body and format back on its article.
      *
-     * The current content is snapshotted first with reason Manual and the
+     * The current content is snapshotted first with reason Restore and the
      * given author, so the restore itself can be undone; then the swap runs
      * under withoutRevisions(), because the translation save and the format
      * save would each record the content just snapshotted. A translation
@@ -154,7 +154,7 @@ final class RevisionManager
         $translation = ArticleTranslation::query()->firstOrNew(['article_id' => $revision->article_id, 'locale' => $revision->locale]);
 
         if ($translation->exists) {
-            $this->snapshot($translation, RevisionReason::Manual, $userId);
+            $this->snapshot($translation, RevisionReason::Restore, $userId);
         }
 
         return $this->withoutRevisions(function () use ($translation, $revision, $article): ArticleTranslation {

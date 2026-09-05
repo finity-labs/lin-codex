@@ -118,11 +118,17 @@ final class ArticlePath
 
     /**
      * The help center URL for a slug, read from config at call time.
+     *
+     * The optional fragment is a heading id as the renderer writes it, with
+     * or without the leading #; it lands as one #id so a field hint's help
+     * center fallback (Phase 4 in fin-codex) and the renderer's own article
+     * links build the same URL.
      */
-    public static function href(string $slug, string $fragment = ''): string
+    public static function href(string $slug, ?string $fragment = null): string
     {
         $prefix = (string) config('lin-codex.routes.help_center', '/help');
+        $id = ltrim((string) $fragment, '#');
 
-        return rtrim($prefix, '/').'/'.$slug.$fragment;
+        return rtrim($prefix, '/').'/'.$slug.($id === '' ? '' : '#'.$id);
     }
 }

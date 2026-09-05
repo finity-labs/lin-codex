@@ -144,6 +144,12 @@ class TestCase extends Orchestra
     private static ?array $liveSchema = null;
 
     /**
+     * Set by markPackageSchemaDirty(): the next test drops and recreates the
+     * live signature's schema without forgetting which tables it owns.
+     */
+    private static bool $rebuild = false;
+
+    /**
      * Runs after the providers boot. SQLite gets the full schema every time.
      * A persistent server gets it once per schema signature (dropping whatever
      * an earlier run or another signature left behind first); after that each
@@ -164,10 +170,11 @@ class TestCase extends Orchestra
             self::$liveSchema = null;
         }
 
-        if (self::$liveSchema === null || $this->packageSchemaIsIncomplete()) {
+        if (self::$liveSchema === null || self::$rebuild || $this->packageSchemaIsIncomplete()) {
             $this->dropPackageSchema();
             $this->createPackageSchema();
             self::$liveSchema = ['signature' => $signature, 'tables' => $this->packageTables()];
+            self::$rebuild = false;
 
             return;
         }
@@ -193,11 +200,13 @@ class TestCase extends Orchestra
     /**
      * Ask for a drop and create before the next test on a persistent server.
      * For tests that change the schema in a way a table listing cannot see,
-     * such as rebuilding an index with another configuration.
+     * such as rebuilding an index with another configuration. Only the
+     * rebuild flag is raised: the signature memo stays, so a later signature
+     * switch still drops these tables instead of leaving them behind.
      */
     public function markPackageSchemaDirty(): void
     {
-        self::$liveSchema = null;
+        self::$rebuild = true;
     }
 
     /**

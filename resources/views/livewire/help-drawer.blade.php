@@ -102,13 +102,15 @@
             trigger: null,
 
             init() {
-                // The deep link is read once: the parameter is removed from the
-                // URL before the drawer opens, so a re-init never sees it again.
+                // The deep link is read once: parameter and hash are removed from
+                // the URL before the drawer opens, so a re-init never sees them again.
                 const slug = new URLSearchParams(window.location.search).get('codex')
 
                 if (slug) {
-                    window.history.replaceState(null, '', window.location.pathname + window.location.hash)
-                    this.$wire.open(slug)
+                    const heading = window.location.hash.replace(/^#/, '')
+
+                    window.history.replaceState(null, '', window.location.pathname)
+                    this.openAt(slug, heading)
                 }
 
                 this.$watch('$wire.isOpen', (open) => open ? this.lock() : this.unlock())
@@ -120,7 +122,32 @@
 
             openFrom(event) {
                 this.trigger = document.activeElement
-                this.$wire.open((event && event.detail && event.detail.slug) ? String(event.detail.slug) : null)
+
+                const detail = (event && event.detail) || {}
+                const slug = detail.slug ? String(detail.slug) : null
+
+                // A heading without a slug is ignored: there is nothing to land on.
+                this.openAt(slug, slug && detail.heading ? String(detail.heading) : '')
+            },
+
+            // Livewire resolves the action promise after the morph, so the heading
+            // exists by the time the scroll runs; a heading that is not in the
+            // article leaves it at the top, silently.
+            async openAt(slug, heading) {
+                await this.$wire.open(slug)
+
+                if (heading) {
+                    this.$nextTick(() => this.scrollToHeading(heading))
+                }
+            },
+
+            scrollToHeading(id) {
+                const body = this.$root.querySelector('.codex-drawer__body')
+                const target = body && body.querySelector('.codex-article__body #' + CSS.escape(id))
+
+                if (target) {
+                    target.scrollIntoView({ block: 'start' })
+                }
             },
 
             onKey(event) {

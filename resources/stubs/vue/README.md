@@ -60,13 +60,16 @@ Props:
 | `fallbackNotice` | `string` | The text shown above an article served in another language (`isFallback`). |
 | `labels` | `Partial<HelpDrawerLabels>` | `title`, `thisPage`, `search`, `browse`, `searchPlaceholder`, `noResults`, `rateLimited`, `close`, `back`. |
 
-The drawer opens on the button, on `Ctrl+/`, on a `codex:open` window event and on a `?codex=slug` query parameter, read once on mount. Without a slug it opens on the first article for the current page; with one it opens that article. `openCodex(slug?)` dispatches the event for you; it is a named export from the plain `<script>` block of `HelpDrawer.vue`, next to the default component export:
+The drawer opens on the button, on `Ctrl+/`, on a `codex:open` window event and on a `?codex=slug` query parameter, read once on mount. Without a slug it opens on the first article for the current page; with one it opens that article. `openCodex(slug?, heading?)` dispatches the event for you; it is a named export from the plain `<script>` block of `HelpDrawer.vue`, next to the default component export:
 
 ```ts
 openCodex()               // the current page's first article
 openCodex('users/roles')  // one article
+openCodex('users/roles', 'reset-a-password')  // one article, scrolled to a heading
 window.dispatchEvent(new CustomEvent('codex:open', { detail: { slug: 'users/roles' } }))   // the same, by hand
 ```
+
+`detail.heading` (or `openCodex(slug, heading)`) scrolls the article body to that heading id once it has rendered; `?codex=slug#heading` does the same on load, and both the parameter and the hash are removed from the URL. A heading without a slug is ignored.
 
 Inside an article, links to other articles carry `data-codex-article` and open in the drawer. Search waits 200 ms after the last keystroke and needs two characters; over the search rate limit it shows `labels.rateLimited` with the seconds to wait. The tree loads the first time its tab is opened and is rendered by a small render-function component in the same file, since a template cannot nest itself.
 

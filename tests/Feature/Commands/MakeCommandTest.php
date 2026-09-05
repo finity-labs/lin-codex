@@ -222,3 +222,26 @@ it('fails when no docs path is configured', function (): void {
         ->expectsOutputToContain('No docs path configured (lin-codex.sources.filesystem.paths).')
         ->assertExitCode(1);
 });
+
+it('writes the shipped German and Hungarian starter text', function (): void {
+    $this->artisan('codex:make', ['slug' => 'intro', '--locale' => 'de'])
+        ->expectsOutputToContain('Created de/intro.md')
+        ->assertExitCode(0);
+    $this->artisan('codex:make', ['slug' => 'intro', '--locale' => 'hu'])
+        ->expectsOutputToContain('Created hu/intro.md')
+        ->assertExitCode(0);
+
+    $german = linCodexMakeFile($this->tmp, 'de/intro.md');
+    $hungarian = linCodexMakeFile($this->tmp, 'hu/intro.md');
+    $hungarianHeading = __('lin-codex::lin-codex.make.heading', [], 'hu');
+    $hungarianStep = __('lin-codex::lin-codex.make.step_one', [], 'hu');
+
+    expect($german)->toContain("## Überblick\n")
+        ->and($german)->toContain('Öffnen Sie die Seite über das Menü.')
+        ->and($german)->not->toContain('Overview')
+        ->and($hungarianHeading)->not->toBe('Overview')
+        ->and($hungarian)->toContain('## '.$hungarianHeading."\n")
+        ->and($hungarian)->toContain($hungarianStep)
+        ->and($hungarian)->not->toContain('Overview')
+        ->and($hungarian)->not->toContain('Open the page from the menu.');
+});

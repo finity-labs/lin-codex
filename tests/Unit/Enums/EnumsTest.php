@@ -27,6 +27,7 @@ dataset('enum backing values', [
         'Manual' => [1, 'manual'],
         'Import' => [2, 'import'],
         'AiRewrite' => [3, 'ai_rewrite'],
+        'Restore' => [4, 'restore'],
     ]],
     'FallbackBehaviour' => [FallbackBehaviour::class, [
         'ShowDefault' => [1, 'show_default'],

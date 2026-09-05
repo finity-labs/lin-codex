@@ -31,16 +31,21 @@ trait CapturesPageHelp
     #[Locked]
     public string $locale = 'en';
 
+    /** The auth guard the viewer is resolved through; null means lin-codex.auth.guard, then the app default. Nullable because Livewire copies a :guard="null" tag parameter onto it before mount(). */
+    #[Locked]
+    public ?string $guard = null;
+
     /** @var list<array{slug: string, title: string, excerpt: ?string, isFallback: bool}> */
     #[Locked]
     public array $pageArticles = [];
 
-    protected function capturePageHelp(PageHelpResolver $resolver, ?string $pageClass, ?string $panelId, ?string $locale): void
+    protected function capturePageHelp(PageHelpResolver $resolver, ?string $pageClass, ?string $panelId, ?string $locale, ?string $guard = null): void
     {
-        $help = $resolver->for($pageClass, $panelId, $locale);
+        $help = $resolver->for($pageClass, $panelId, $locale, $guard);
 
         $this->page = $help->context->toArray();
         $this->locale = $help->locale;
+        $this->guard = $guard;
         $this->pageArticles = $help->articles;
     }
 
@@ -50,11 +55,12 @@ trait CapturesPageHelp
     }
 
     /**
-     * Who is reading, resolved for the current request.
+     * Who is reading, resolved for the current request through the guard
+     * captured at mount.
      */
     protected function viewer(): Viewer
     {
-        return app(ViewerResolver::class)->resolve();
+        return app(ViewerResolver::class)->resolve($this->guard);
     }
 
     /**

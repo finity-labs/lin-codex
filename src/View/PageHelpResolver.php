@@ -13,10 +13,12 @@ use Illuminate\Http\Request;
 
 /**
  * Resolves the help for the current request's page once per request and
- * per (page class, panel id, locale) key. The help button and the drawer
- * mount both call for() during the initial page render, so the memo means
- * one detection and one ContextResolver pass per page for the badge count
- * and the drawer's page list together.
+ * per (page class, panel id, locale, guard) key. The help button and the
+ * drawer mount both call for() during the initial page render, so the memo
+ * means one detection and one ContextResolver pass per page for the badge
+ * count and the drawer's page list together. The guard sits in the key
+ * because two guards may see two article lists in the same request; a null
+ * guard means the configured one, as in ViewerResolver.
  *
  * Bound as a scoped instance. The request is read lazily from the
  * container on every call rather than injected: a scoped instance is not
@@ -44,7 +46,7 @@ final class PageHelpResolver
         private readonly LocaleResolver $locales,
     ) {}
 
-    public function for(?string $pageClass = null, ?string $panelId = null, ?string $locale = null): PageHelp
+    public function for(?string $pageClass = null, ?string $panelId = null, ?string $locale = null, ?string $guard = null): PageHelp
     {
         $request = $this->currentRequest();
 
@@ -54,15 +56,15 @@ final class PageHelpResolver
         }
 
         $locale = $this->locales->resolve($locale);
-        $key = $pageClass.'|'.$panelId.'|'.$locale;
+        $key = $pageClass.'|'.$panelId.'|'.$locale.'|'.$guard;
 
-        return $this->memo[$key] ??= $this->resolve($request, $pageClass, $panelId, $locale);
+        return $this->memo[$key] ??= $this->resolve($request, $pageClass, $panelId, $locale, $guard);
     }
 
-    private function resolve(Request $request, ?string $pageClass, ?string $panelId, string $locale): PageHelp
+    private function resolve(Request $request, ?string $pageClass, ?string $panelId, string $locale, ?string $guard): PageHelp
     {
         $context = $this->detector->detect($request, $pageClass, $panelId);
-        $viewer = $this->viewers->resolve();
+        $viewer = $this->viewers->resolve($guard);
         $articles = [];
 
         foreach ($this->resolver->resolve($context, $viewer, $locale) as $article) {

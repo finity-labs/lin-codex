@@ -49,6 +49,14 @@ it('builds the help center href from config at call time', function (): void {
     expect(ArticlePath::href('users/roles', '#x'))->toBe('https://app.test/manual/users/roles#x');
 });
 
+it('builds the help center href with a bare heading, a hash fragment or none', function (): void {
+    expect(ArticlePath::href('users/roles', 'reset-a-password'))->toBe('/help/users/roles#reset-a-password')
+        ->and(ArticlePath::href('users/roles', '#reset-a-password'))->toBe('/help/users/roles#reset-a-password')
+        ->and(ArticlePath::href('users/roles', ''))->toBe('/help/users/roles')
+        ->and(ArticlePath::href('users/roles', null))->toBe('/help/users/roles')
+        ->and(ArticlePath::href('users/roles'))->toBe('/help/users/roles');
+});
+
 it('resolves links from a section render slug against its folder', function (): void {
     expect(ArticlePath::resolve('users/index', 'roles.md'))
         ->toBe(['slug' => 'users/roles', 'fragment' => ''])

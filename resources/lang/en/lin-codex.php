@@ -22,6 +22,7 @@ return [
             'manual' => 'Manual',
             'import' => 'Import',
             'ai_rewrite' => 'AI rewrite',
+            'restore' => 'Restore',
         ],
         'fallback_behaviour' => [
             'show_default' => 'Show default language',
