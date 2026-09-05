@@ -1,0 +1,6 @@
+# Read by Larastan when it boots a Testbench application for analysis, so the
+# package provider registers the lin-codex:: view namespace and view() calls
+# type-check as view-string. The Pest harness lists its providers itself in
+# tests/TestCase.php and ignores this file.
+providers:
+  - FinityLabs\LinCodex\LinCodexServiceProvider

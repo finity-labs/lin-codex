@@ -1,0 +1,78 @@
+{
+    "name": "finity-labs/lin-codex",
+    "description": "In-app help for Laravel. Contextual help articles from Markdown files or the database, with search, translations, and a Livewire help drawer.",
+    "keywords": [
+        "laravel",
+        "help",
+        "knowledge-base",
+        "documentation",
+        "livewire"
+    ],
+    "homepage": "https://github.com/finity-labs/lin-codex",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Finity Labs",
+            "email": "filament.infinity@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "type": "library",
+    "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "league/commonmark": "^2.10",
+        "livewire/livewire": "^3.0|^4.0",
+        "spatie/laravel-package-tools": "^1.92",
+        "spatie/laravel-settings": "^3.7|^4.0",
+        "symfony/html-sanitizer": "^7.1|^8.0",
+        "symfony/yaml": "^7.0|^8.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.0",
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "pestphp/pest": "^3.0|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.0|^4.0"
+    },
+    "suggest": {
+        "finity-labs/fin-codex": "Filament panel integration: help drawer, contextual help buttons, and the article editor.",
+        "finity-labs/lin-ai": "AI-assisted drafting, rewriting, and translation of help articles.",
+        "laravel/scout": "Swap the built-in database search for a Scout driver."
+    },
+    "autoload": {
+        "psr-4": {
+            "FinityLabs\\LinCodex\\": "src/",
+            "FinityLabs\\LinCodex\\Database\\Factories\\": "database/factories/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FinityLabs\\LinCodex\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "analyse": "vendor/bin/phpstan analyse",
+        "format": "vendor/bin/pint"
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.1.x-dev"
+        },
+        "laravel": {
+            "providers": [
+                "FinityLabs\\LinCodex\\LinCodexServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
