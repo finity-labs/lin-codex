@@ -45,14 +45,20 @@ return [
     |
     | The filesystem disk uploaded images are stored on and the directory
     | inside that disk. Images are referenced from article bodies by their
-    | plain disk URL (for example "/storage/codex/abc.png"), so the disk
-    | needs a public URL for images to render.
+    | plain disk URL (for example "/storage/codex/2026/09/abc.png"), so the
+    | disk needs a public URL for images to render.
+    |
+    | The directory may carry the placeholders {Y}, {m} and {d}, which the
+    | uploader (fin-codex) expands to the upload's year, month and day, so a
+    | busy site's images spread over dated folders rather than one flat
+    | directory. A stored image keeps the path it was written under, so
+    | changing this setting moves nothing.
     |
     */
 
     'media' => [
         'disk' => 'public',
-        'directory' => 'codex',
+        'directory' => 'codex/{Y}/{m}',
     ],
 
     /*
@@ -130,6 +136,13 @@ return [
         ],
         'sanitizer' => [
             'max_input_length' => -1,
+        ],
+        // A link whose path ends in one of these is a file to save, not a
+        // page to read: the renderer stamps it with a download attribute
+        // carrying the file name, in Markdown and HTML articles alike. The
+        // attribute only takes effect on a same-origin URL.
+        'download_extensions' => [
+            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'txt', 'csv', 'rtf',
         ],
     ],
 

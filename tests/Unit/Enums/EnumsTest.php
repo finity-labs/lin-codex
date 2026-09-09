@@ -112,7 +112,7 @@ it('spot-checks known English labels', function () {
 it('exposes users_table and media config with the locked defaults', function () {
     expect(config('lin-codex.users_table'))->toBe('users')
         ->and(config('lin-codex.media.disk'))->toBe('public')
-        ->and(config('lin-codex.media.directory'))->toBe('codex')
+        ->and(config('lin-codex.media.directory'))->toBe('codex/{Y}/{m}')
         ->and(config('lin-codex.source'))->toBe('composite')
         ->and(config('lin-codex.sources.filesystem.paths'))->toBe([resource_path('codex')])
         ->and(config('lin-codex.routes.media'))->toBe('/codex/media')

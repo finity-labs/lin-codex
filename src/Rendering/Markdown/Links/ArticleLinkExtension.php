@@ -14,7 +14,8 @@ use League\CommonMark\Extension\ExtensionInterface;
  * ahead of the ExternalLinkProcessor at -50: a rewritten root-relative href
  * has no host and is skipped by the external link pass, and an absolute
  * help center URL on the app host is classed internal. Resolved article
- * links therefore never receive target, rel or codex-external.
+ * links therefore never receive target, rel or codex-external. The
+ * download marker follows at -1, once article links are resolved.
  */
 final class ArticleLinkExtension implements ExtensionInterface
 {
@@ -23,5 +24,6 @@ final class ArticleLinkExtension implements ExtensionInterface
     public function register(EnvironmentBuilderInterface $environment): void
     {
         $environment->addEventListener(DocumentParsedEvent::class, [new ArticleLinkResolver($this->state), 'onDocumentParsed'], 0);
+        $environment->addEventListener(DocumentParsedEvent::class, [new DownloadLinkMarker, 'onDocumentParsed'], -1);
     }
 }

@@ -8,6 +8,7 @@ use DOMDocument;
 use DOMElement;
 use DOMXPath;
 use FinityLabs\LinCodex\Rendering\ArticlePath;
+use FinityLabs\LinCodex\Rendering\DownloadLink;
 use FinityLabs\LinCodex\Rendering\HeadingSlugger;
 
 /**
@@ -15,8 +16,8 @@ use FinityLabs\LinCodex\Rendering\HeadingSlugger;
  * link treatment as Markdown: every h2-h6 gets a stable slug id (author ids
  * are reserved first so generated ids never collide with them), the
  * codex-anchor permalink, h2/h3 table-of-contents data, relative .md links
- * resolved to help center hrefs, and external hosts marked with target, rel
- * and codex-external. Runs after the sanitizer only; everything it adds is
+ * resolved to help center hrefs, links to files stamped with a download
+ * attribute, and external hosts marked with target, rel and codex-external. Runs after the sanitizer only; everything it adds is
  * inside the sanitizer allowlist anyway.
  */
 final class HeadingPass
@@ -128,6 +129,12 @@ final class HeadingPass
                 $link->setAttribute('data-codex-article', $resolved['slug']);
 
                 continue;
+            }
+
+            $download = DownloadLink::fileName($href);
+
+            if ($download !== null) {
+                $link->setAttribute('download', $download);
             }
 
             $host = parse_url($href, PHP_URL_HOST);

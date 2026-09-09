@@ -92,7 +92,7 @@ Wrap a numbered list in a `:::steps` fence. The first paragraph of each item is 
 :::steps
 1. Open the users page
 
-   ![Users page](/storage/codex/users.png "The users list")
+   ![Users page](/storage/codex/2026/09/users.png "The users list")
 
 2. Click **Add** and fill in the form
 :::
@@ -113,7 +113,7 @@ Only needed when the connection uses a proxy.
 An image on its own line becomes a figure. The title, if given, is the caption. Images load lazily and carry a lightbox hook.
 
 ```markdown
-![Alt](/storage/codex/a.png "Caption")
+![Alt](/storage/codex/2026/09/a.png "Caption")
 ```
 
 ### Links
@@ -125,6 +125,8 @@ See [Roles](roles.md) and [Invoices](../billing/invoices.md#totals).
 ```
 
 From code, `FinityLabs\LinCodex\Rendering\ArticlePath::href('users/roles', 'reset-a-password')` gives `/help/users/roles#reset-a-password`, with or without the leading `#` on the heading.
+
+A link to a file — a PDF, an office document, a text or CSV file — is stamped with a `download` attribute carrying the file name, so the browser saves it instead of leaving the article: `[Guide](/storage/codex/2026/09/guide.pdf)` renders as `<a href="…" download="guide.pdf">`. Which extensions count is `lin-codex.render.download_extensions`. The attribute takes effect on same-origin URLs; a browser opens a cross-origin file as before.
 
 ### Headings
 

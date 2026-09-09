@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FinityLabs\LinCodex\Rendering\Html;
 
+use FinityLabs\LinCodex\Rendering\DownloadLink;
 use FinityLabs\LinCodex\Rendering\PlainTextExtractor;
 use FinityLabs\LinCodex\Rendering\RenderedArticle;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerInterface;
@@ -48,6 +49,7 @@ final class HtmlPipeline
     {
         return [
             'sanitizer' => config('lin-codex.render.sanitizer'),
+            'download_extensions' => DownloadLink::extensions(),
             'help_center' => config('lin-codex.routes.help_center'),
             'internal_host' => (string) (parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'localhost'),
         ];

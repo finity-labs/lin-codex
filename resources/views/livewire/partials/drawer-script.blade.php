@@ -126,7 +126,9 @@
 
             const link = event.target.closest('a[href]')
 
-            if (! link || link.target || link.hasAttribute('wire:click') || link.hasAttribute('wire:click.prevent')) {
+            // A download link stays where it is: the browser saves the file
+            // and the reader keeps the article.
+            if (! link || link.target || link.hasAttribute('download') || link.hasAttribute('wire:click') || link.hasAttribute('wire:click.prevent')) {
                 return
             }
 

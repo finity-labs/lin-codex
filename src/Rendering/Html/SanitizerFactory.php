@@ -55,6 +55,7 @@ final class SanitizerFactory
             ->allowAttribute('loading', ['img'])
             ->allowAttribute('decoding', ['img'])
             ->allowAttribute('target', ['a'])
+            ->allowAttribute('download', ['a'])
             ->allowAttribute('rel', ['a'])
             ->allowAttribute('role', ['aside'])
             ->allowAttribute('aria-hidden', ['span', 'a'])

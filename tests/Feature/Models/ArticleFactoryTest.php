@@ -140,7 +140,9 @@ it('creates media through withMedia', function (): void {
 
     $article->media->each(function (Media $media) use ($article): void {
         expect($media->disk)->toBe(config('lin-codex.media.disk'))
-            ->and($media->path)->toStartWith(config('lin-codex.media.directory').'/')
+            // The factory expands the directory's date placeholders the way
+            // an uploader does: codex/{Y}/{m} becomes codex/2026/09.
+            ->and($media->path)->toStartWith('codex/'.now()->format('Y/m').'/')
             ->and($media->article_id)->toBe($article->id);
     });
 });

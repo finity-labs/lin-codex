@@ -22,13 +22,29 @@ class MediaFactory extends Factory
     {
         return [
             'disk' => config('lin-codex.media.disk', 'public'),
-            'path' => config('lin-codex.media.directory', 'codex').'/'.fake()->uuid().'.png',
+            'path' => self::directory().'/'.fake()->uuid().'.png',
             'name' => fake()->word().'.png',
             'mime_type' => 'image/png',
             'size' => fake()->numberBetween(1_000, 500_000),
             'uploaded_by' => null,
             'article_id' => null,
         ];
+    }
+
+    /**
+     * The configured directory with its date placeholders expanded, the
+     * way an uploader writes it.
+     */
+    private static function directory(): string
+    {
+        $directory = config('lin-codex.media.directory', 'codex');
+        $now = now();
+
+        return trim(strtr(is_string($directory) ? $directory : 'codex', [
+            '{Y}' => $now->format('Y'),
+            '{m}' => $now->format('m'),
+            '{d}' => $now->format('d'),
+        ]), '/');
     }
 
     public function forArticle(Article $article): static
