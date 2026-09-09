@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-09
+
+### Changed
+
+- `Livewire\HelpDrawer` is no longer final and renders the view named by a new `viewName()` method, so a host layer can extend it and supply its own shell while keeping every property, action and the Alpine glue; `viewData()` assembles what the view needs, once per render, for the core view and any replacement. The glue now lives in `lin-codex::livewire.partials.drawer-script`, included inside the `@script` block of the core view and of any replacement view.
+
+
 ## [0.2.0] - 2026-09-05
 
 ### Added

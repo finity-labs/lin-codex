@@ -442,3 +442,16 @@ it('keeps the mounted shortcut and width when config changes after mount', funct
         ->assertDontSeeHtml('999px')
         ->assertDontSeeHtml('ctrl+shift+h');
 });
+
+it('emits the Alpine glue from the shared partial on a full page', function (): void {
+    Route::get('/ui-page', fn () => Blade::render('<x-lin-codex::help-drawer />'))->middleware('web');
+
+    $content = (string) $this->get('/ui-page')->assertOk()->getContent();
+
+    // The glue is a partial included inside the view's @script block; a
+    // partial that carried @script itself would be dropped by Livewire.
+    // Livewire ships @script blocks in the root's wire:effects attribute for
+    // its JavaScript to run, so the registration appears attribute-escaped.
+    expect($content)->toContain('x-data="codexDrawer(')
+        ->toMatch("/Alpine\\.data\\((&#039;|'|\\\\u0027)codexDrawer/");
+});

@@ -10,6 +10,7 @@ use FinityLabs\LinCodex\Livewire\Concerns\SearchesArticles;
 use FinityLabs\LinCodex\Reading\ArticleReader;
 use FinityLabs\LinCodex\Reading\ReadArticle;
 use FinityLabs\LinCodex\Reading\TreeBuilder;
+use FinityLabs\LinCodex\Search\SearchResult;
 use FinityLabs\LinCodex\View\PageHelpResolver;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
@@ -37,7 +38,7 @@ use Livewire\Component;
  * the second read cheap. A hidden or missing slug reads as null and renders
  * the not-found line, never a 403.
  */
-final class HelpDrawer extends Component
+class HelpDrawer extends Component
 {
     use CapturesPageHelp;
     use SearchesArticles;
@@ -215,6 +216,21 @@ final class HelpDrawer extends Component
 
     public function render(): View
     {
+        return view($this->viewName(), $this->viewData());
+    }
+
+    /**
+     * Everything the view needs beyond the public properties, assembled once
+     * per render: the article, its fallback notice and the "also on this
+     * page" list in the article view, the search result in the search view,
+     * the tree in the tree view (and on a page with no articles), the title
+     * of the current view, the Alpine options and the help-center URL. A host
+     * view that replaces the core's (fin-codex) reads the same array.
+     *
+     * @return array{read: ?ReadArticle, fallbackNotice: ?string, also: list<array{slug: string, title: string, excerpt: ?string, isFallback: bool}>, result: ?SearchResult, nodes: list<TreeNode>, title: string, options: array{shortcut: ?string, width: ?int}, width: ?int, helpCenterUrl: string}
+     */
+    protected function viewData(): array
+    {
         $read = null;
         $fallbackNotice = null;
         $also = [];
@@ -241,17 +257,29 @@ final class HelpDrawer extends Component
             default => __('lin-codex::lin-codex.ui.this_page'),
         };
 
-        return view('lin-codex::livewire.help-drawer', [
+        return [
             'read' => $read,
             'fallbackNotice' => $fallbackNotice,
             'also' => $also,
             'result' => $result,
             'nodes' => $nodes,
-            'title' => $title,
+            'title' => (string) $title,
             'options' => ['shortcut' => $this->shortcut, 'width' => $this->width],
             'width' => $this->width,
             'helpCenterUrl' => route('lin-codex.help-center'),
-        ]);
+        ];
+    }
+
+    /**
+     * The Blade view the drawer renders. A host layer (fin-codex) extends the
+     * component and answers with its own view to restyle the shell while
+     * every property, action and the Alpine glue stay the core's; the view
+     * must keep the root's data attributes and the partials' hooks, and
+     * include lin-codex::livewire.partials.drawer-script.
+     */
+    protected function viewName(): string
+    {
+        return 'lin-codex::livewire.help-drawer';
     }
 
     private function push(): void
