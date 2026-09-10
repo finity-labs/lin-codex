@@ -109,9 +109,9 @@ it('reads the loaded relation without a query', function (): void {
 
     $table = $article->translations()->getModel()->getTable();
 
-    // LocaleResolver reads the settings group on every call by design, so the
-    // settings table is queried here; what a loaded relation must prevent is
-    // a query against the translations table, once per article in a bulk run.
+    // The first candidates() call reads the settings group and a warmed
+    // instance does not; what a loaded relation must prevent is a query
+    // against the translations table, once per article in a bulk run.
     $translationQueries = array_values(array_filter(
         $queries,
         fn (array $query): bool => str_contains((string) $query['query'], $table),
@@ -119,6 +119,36 @@ it('reads the loaded relation without a query', function (): void {
 
     expect($result)->toBe(['hu'])
         ->and($translationQueries)->toBe([]);
+});
+
+it('reads the languages once per instance and again on a new one', function (): void {
+    $article = linCodexMissingArticle(['en' => ['title' => 'T', 'body' => 'B']])->load('translations');
+
+    $missing = app(MissingTranslations::class);
+    $missing->candidates();
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $candidates = $missing->candidates();
+    $result = $missing->for($article);
+
+    $queries = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    $settingsQueries = array_values(array_filter(
+        $queries,
+        fn (array $query): bool => str_contains((string) $query['query'], 'settings'),
+    ));
+
+    expect($candidates)->toBe(['de', 'hu'])
+        ->and($result)->toBe(['de', 'hu'])
+        ->and($settingsQueries)->toBe([]);
+
+    linCodexMissingUseLanguages(['en', 'hu']);
+
+    expect($missing->candidates())->toBe(['de', 'hu'])
+        ->and(app(MissingTranslations::class)->candidates())->toBe(['hu']);
 });
 
 it('follows the settings order', function (): void {

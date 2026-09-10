@@ -12,6 +12,7 @@ use FinityLabs\LinCodex\Settings\CodexSettings;
 use FinityLabs\LinCodex\Tests\Fixtures\FakeAiClient;
 use FinityLabs\LinCodex\Translation\ArticleTranslator;
 use FinityLabs\LinCodex\Translation\TranslationPrompt;
+use Illuminate\Support\Facades\Exceptions;
 use Laravel\Ai\Prompts\AgentPrompt;
 
 /**
@@ -291,6 +292,8 @@ it('fails with invalid_output when a fence or link target went missing and passe
 });
 
 it('maps a seam failure to its reason and unexpected errors to unknown', function (): void {
+    Exceptions::fake();
+
     $limited = linCodexTranslatorWith((new FakeAiClient)->push(new AiCallFailed(AiReason::RATE_LIMITED)))
         ->translate($this->article, 'de');
 
@@ -298,11 +301,28 @@ it('maps a seam failure to its reason and unexpected errors to unknown', functio
         ->and($limited->reason)->toBe(AiReason::RATE_LIMITED)
         ->and($limited->reasonLabel())->toBe(AiReason::label(AiReason::RATE_LIMITED));
 
+    Exceptions::assertNothingReported();
+
     $boom = linCodexTranslatorWith((new FakeAiClient)->push(new RuntimeException('boom')))
         ->translate($this->article, 'de');
 
     expect($boom->ok)->toBeFalse()
         ->and($boom->reason)->toBe(AiReason::UNKNOWN);
+
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'boom');
+});
+
+it('reports an unexpected error exactly once', function (): void {
+    Exceptions::fake();
+
+    $result = linCodexTranslatorWith((new FakeAiClient)->push(new RuntimeException('once')))
+        ->translate($this->article, 'de');
+
+    expect($result->ok)->toBeFalse()
+        ->and($result->reason)->toBe(AiReason::UNKNOWN);
+
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'once');
+    Exceptions::assertReportedCount(1);
 });
 
 it('fails with unavailable when AI is off or the SDK is missing, without prompting', function (): void {

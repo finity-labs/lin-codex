@@ -28,9 +28,19 @@ use Illuminate\Database\Eloquent\Collection;
  * only otherwise, so a bulk action that eager-loads pays one query for the
  * whole selection while the job's per-locale re-check, running on a freshly
  * fetched article, still sees rows written since dispatch.
+ *
+ * The candidates are memoised per instance because LocaleResolver reads the
+ * settings group on every call and for() is asked once per row on the
+ * article list. The class is not a shared binding, so a new request, a new
+ * job run and a new app() call each read the settings again, and a settings
+ * change is never served stale across requests - the same reasoning
+ * fin-codex's OutdatedTranslations gives for its own languages memo.
  */
 final class MissingTranslations
 {
+    /** @var list<string>|null */
+    private ?array $candidates = null;
+
     public function __construct(private readonly LocaleResolver $locales) {}
 
     /**
@@ -40,7 +50,7 @@ final class MissingTranslations
      */
     public function candidates(): array
     {
-        return array_values(array_diff($this->locales->languages(), [$this->locales->defaultLocale()]));
+        return $this->candidates ??= array_values(array_diff($this->locales->languages(), [$this->locales->defaultLocale()]));
     }
 
     /**

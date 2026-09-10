@@ -124,7 +124,10 @@ final class LaravelAiClient implements AiClient
 
     /**
      * The reason key for a throwable, whether it came from the SDK, from the
-     * HTTP client underneath it or from this class.
+     * HTTP client underneath it or from this class. An unknown verdict is
+     * reported through report() before it is returned, so Test connection,
+     * the tier lookup and a translation all surface the same original
+     * exception once.
      */
     public function reason(Throwable $e): string
     {
@@ -172,7 +175,7 @@ final class LaravelAiClient implements AiClient
                 $status === 429 => AiReason::RATE_LIMITED,
                 $status === 402 => AiReason::QUOTA_EXCEEDED,
                 $status >= 500 => AiReason::UNAVAILABLE,
-                default => AiReason::UNKNOWN,
+                default => $this->unknown($e),
             };
         }
 
@@ -184,6 +187,18 @@ final class LaravelAiClient implements AiClient
         if ($e instanceof LogicException) {
             return AiReason::UNAVAILABLE;
         }
+
+        return $this->unknown($e);
+    }
+
+    /**
+     * The one reason with no name: hand the throwable to the host's error
+     * tooling on the way out, so the stack is seen exactly once - here, and
+     * never again by a caller that only sees the reason key.
+     */
+    private function unknown(Throwable $e): string
+    {
+        report($e);
 
         return AiReason::UNKNOWN;
     }

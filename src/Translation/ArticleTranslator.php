@@ -100,6 +100,9 @@ final class ArticleTranslator
      * Translate raw text: the tab action's unsaved form fields.
      *
      * Never throws for an AI failure - the reason comes back on the result.
+     * An AiCallFailed carries a reason the seam already reported or named;
+     * anything else is reported here, so a throwable reaches the host's error
+     * tooling exactly once on either path.
      *
      * @throws InvalidArgumentException when $target equals $source
      */
@@ -141,7 +144,9 @@ final class ArticleTranslator
             ));
         } catch (AiCallFailed $e) {
             return TranslationResult::failed($e->reason);
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            report($e);
+
             return TranslationResult::failed(AiReason::UNKNOWN);
         }
 

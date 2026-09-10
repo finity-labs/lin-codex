@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-10
+
+### Fixed
+
+- A translation, a tier lookup or a connection test that fails for a reason the seam cannot name (`AiReason::UNKNOWN`) now hands the original throwable to `report()` exactly once, in `Ai\LaravelAiClient::reason()` for an SDK or HTTP error and in `Translation\ArticleTranslator` for anything else, so the host's error tooling sees the real stack instead of a reason key. A failure with a named reason is still never reported.
+
+### Changed
+
+- `Translation\MissingTranslations::candidates()` reads the configured languages once per instance instead of on every call, so `for()` on an article whose translations are loaded costs no query; a new instance reads the settings again.
+
 ## [0.3.0] - 2026-09-10
 
 ### Added

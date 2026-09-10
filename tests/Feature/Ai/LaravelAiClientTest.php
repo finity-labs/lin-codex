@@ -10,6 +10,7 @@ use GuzzleHttp\Psr7\Response as PsrResponse;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Exceptions;
 use Laravel\Ai\Ai;
 use Laravel\Ai\AnonymousAgent;
 use Laravel\Ai\Contracts\Gateway\StepTextGateway;
@@ -146,6 +147,28 @@ it('maps :dataset to a reason key', function (Closure $throwable, string $reason
     'an unrelated runtime error' => [fn (): Throwable => new RuntimeException('boom'), 'unknown'],
     'a failure that already carries a reason' => [fn (): Throwable => new AiCallFailed('rate_limited'), 'rate_limited'],
 ]);
+
+it('reports the throwable behind an unknown reason and nothing else', function (): void {
+    Exceptions::fake();
+
+    $client = app(LaravelAiClient::class);
+
+    expect($client->reason(new RuntimeException('boom')))->toBe('unknown');
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'boom');
+
+    expect($client->reason(linCodexSeamHttpException(400)))->toBe('unknown');
+    Exceptions::assertReported(RequestException::class);
+
+    Exceptions::fake();
+
+    expect($client->reason(new AiCallFailed('rate_limited')))->toBe('rate_limited')
+        ->and($client->reason(linCodexSeamHttpException(401)))->toBe('authentication_failed')
+        ->and($client->reason(linCodexSeamHttpException(503)))->toBe('unavailable')
+        ->and($client->reason(new ConnectionException('timed out')))->toBe('timeout')
+        ->and($client->reason(new LogicException('x')))->toBe('unavailable');
+
+    Exceptions::assertNothingReported();
+});
 
 describe('with the SDK', function (): void {
     beforeEach(function (): void {
