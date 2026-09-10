@@ -9,7 +9,7 @@ use FinityLabs\LinCodex\Tests\TestCase;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Testing\TestView;
 
-uses(TestCase::class)->in('Unit', 'Feature/Migrations', 'Feature/Models', 'Feature/Rendering', 'Feature/Http', 'Feature/Settings', 'Feature/Sources', 'Feature/Auth', 'Feature/Contexts', 'Feature/Locale', 'Feature/Reading', 'Feature/Search', 'Feature/Api', 'Feature/Stubs', 'Feature/Livewire', 'Feature/Views', 'Feature/Revisions', 'Feature/Commands', 'Feature/Coverage', 'Feature/Sync');
+uses(TestCase::class)->in('Unit', 'Feature/Migrations', 'Feature/Models', 'Feature/Rendering', 'Feature/Http', 'Feature/Settings', 'Feature/Sources', 'Feature/Auth', 'Feature/Contexts', 'Feature/Locale', 'Feature/Reading', 'Feature/Search', 'Feature/Api', 'Feature/Stubs', 'Feature/Livewire', 'Feature/Views', 'Feature/Revisions', 'Feature/Commands', 'Feature/Coverage', 'Feature/Sync', 'Feature/Ai', 'Feature/Translation', 'Feature/Jobs');
 uses(CustomTableNamesTestCase::class)->in('Feature/CustomTableNames');
 uses(CustomApiPrefixTestCase::class)->in('Feature/CustomApiPrefix');
 uses(CustomHelpCenterTestCase::class)->in('Feature/CustomHelpCenter');

@@ -122,6 +122,29 @@ return [
     ],
 
     /*
+     * Reason keys for a failed AI call and why-not keys for an unavailable
+     * AI; the keys are `Ai\AiReason` and `Ai\AiAvailability` constants.
+     */
+    'ai' => [
+        'reasons' => [
+            'timeout' => 'The provider did not answer in time.',
+            'authentication_failed' => 'The provider rejected the API key.',
+            'rate_limited' => 'The provider is rate limiting requests. Try again in a minute.',
+            'quota_exceeded' => 'The provider reports an exhausted quota or credit balance.',
+            'output_rejected' => 'The answer was rejected because it contained a suspicious marker.',
+            'invalid_output' => 'The answer was incomplete or malformed.',
+            'unavailable' => 'AI translation is not available.',
+            'unknown' => 'The request failed for an unknown reason.',
+        ],
+        'unavailable' => [
+            'sdk_missing' => 'The laravel/ai package is not installed.',
+            'not_migrated' => 'The AI settings have not been migrated yet.',
+            'disabled' => 'AI translation is switched off.',
+            'no_key' => 'No provider or API key is configured.',
+        ],
+    ],
+
+    /*
      * Labels for folder groups (folders without an index file), keyed by the
      * group's full slug: 'users' => 'Users', 'billing/archive' => 'Archive'.
      * A missing key falls back to the humanised last folder name.

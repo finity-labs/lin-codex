@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use FinityLabs\LinCodex\Settings\CodexAiSettings;
 use FinityLabs\LinCodex\Settings\CodexSettings;
 use FinityLabs\LinCodex\Tests\TestCase;
 use Illuminate\Support\Facades\Artisan;
@@ -14,7 +15,7 @@ const LIN_CODEX_INSTALL_TABLE_KEYS = ['articles', 'article_translations', 'artic
 /**
  * Make the Testbench app look like a host that never ran the package
  * migrations: drop the five package tables (foreign key checks off),
- * delete the lin-codex settings rows and drop the migrations table so
+ * delete both settings groups' rows and drop the migrations table so
  * the migrator has no record of anything. The settings table itself
  * stays, as it does on a host that already uses spatie/laravel-settings.
  */
@@ -29,7 +30,7 @@ function linCodexInstallFresh(TestCase $test): void
     Schema::enableForeignKeyConstraints();
 
     if (Schema::hasTable('settings')) {
-        DB::table('settings')->where('group', 'lin-codex')->delete();
+        DB::table('settings')->whereIn('group', ['lin-codex', 'lin-codex-ai'])->delete();
     }
 
     Schema::dropIfExists('migrations');
@@ -63,6 +64,7 @@ function linCodexInstallCleanup(array $before): void
 
     if ($before['settings']) {
         File::delete(File::glob(database_path('settings/*_create_codex_settings.php')));
+        File::delete(File::glob(database_path('settings/*_create_codex_ai_settings.php')));
     } else {
         File::deleteDirectory(database_path('settings'));
     }
@@ -84,6 +86,10 @@ function linCodexInstallPublished(string $pattern): array
     return File::glob(database_path($pattern));
 }
 
+/**
+ * The migrations table records one row per package migration file the
+ * install ran: the five tables plus the two settings seeds, so seven.
+ */
 function linCodexInstallCodexMigrationRows(): int
 {
     return DB::table('migrations')->where('migration', 'like', '%create_codex_%')->count();
@@ -110,6 +116,7 @@ it('installs on a fresh app: config, migrations, settings, reindex, summary', fu
             ->expectsOutputToContain('Config published')
             ->expectsOutputToContain('Migrations published')
             ->expectsOutputToContain('Settings seeded')
+            ->expectsOutputToContain('AI settings seeded')
             ->expectsOutputToContain('translations indexed')
             ->expectsOutputToContain('lin-codex installed')
             ->assertSuccessful();
@@ -120,17 +127,22 @@ it('installs on a fresh app: config, migrations, settings, reindex, summary', fu
             expect(linCodexInstallPublished('migrations/*_create_codex_'.$key.'_table.php'))->toHaveCount(1, $key);
         }
 
-        expect(linCodexInstallPublished('settings/*_create_codex_settings.php'))->toHaveCount(1);
+        expect(linCodexInstallPublished('settings/*_create_codex_settings.php'))->toHaveCount(1)
+            ->and(linCodexInstallPublished('settings/*_create_codex_ai_settings.php'))->toHaveCount(1);
 
         foreach (linCodexInstallTables() as $table) {
             expect(Schema::hasTable($table))->toBeTrue($table.' was not created');
         }
 
         $settings = app(CodexSettings::class)->refresh();
+        $ai = app(CodexAiSettings::class)->refresh();
 
-        expect(linCodexInstallCodexMigrationRows())->toBe(6)
+        expect(linCodexInstallCodexMigrationRows())->toBe(7)
             ->and($settings->revisions_keep)->toBe(10)
             ->and($settings->revisions_enabled)->toBeFalse()
+            ->and($ai->enabled)->toBeFalse()
+            ->and($ai->timeout)->toBe(120)
+            ->and(DB::table('settings')->where('group', 'lin-codex-ai')->count())->toBe(count(CodexAiSettings::defaults()))
             ->and(File::isDirectory(public_path('vendor/lin-codex')))->toBeFalse();
     } finally {
         linCodexInstallCleanup($before);
@@ -156,8 +168,33 @@ it('is idempotent', function (): void {
         }
 
         expect(linCodexInstallPublished('settings/*_create_codex_settings.php'))->toHaveCount(1)
-            ->and(linCodexInstallCodexMigrationRows())->toBe(6)
-            ->and(app(CodexSettings::class)->refresh()->revisions_keep)->toBe(10);
+            ->and(linCodexInstallPublished('settings/*_create_codex_ai_settings.php'))->toHaveCount(1)
+            ->and(linCodexInstallCodexMigrationRows())->toBe(7)
+            ->and(app(CodexSettings::class)->refresh()->revisions_keep)->toBe(10)
+            ->and(app(CodexAiSettings::class)->refresh()->timeout)->toBe(120);
+    } finally {
+        linCodexInstallCleanup($before);
+        $this->markPackageSchemaDirty();
+    }
+});
+
+it('seeds the AI group again when only its rows are missing', function (): void {
+    $before = linCodexInstallSnapshot();
+    linCodexInstallFresh($this);
+
+    try {
+        $this->artisan('codex:install')->assertSuccessful();
+
+        DB::table('settings')->where('group', 'lin-codex-ai')->delete();
+
+        $this->artisan('codex:install')
+            ->expectsOutputToContain('Nothing to migrate')
+            ->expectsOutputToContain('AI settings seeded')
+            ->assertSuccessful();
+
+        expect(DB::table('settings')->where('group', 'lin-codex-ai')->count())->toBe(count(CodexAiSettings::defaults()))
+            ->and(DB::table('settings')->where('group', 'lin-codex')->count())->toBe(count(CodexSettings::defaults()))
+            ->and(app(CodexAiSettings::class)->refresh()->timeout)->toBe(120);
     } finally {
         linCodexInstallCleanup($before);
         $this->markPackageSchemaDirty();
@@ -257,7 +294,7 @@ PROBE);
 
         expect(Schema::hasTable('lin_codex_probe'))->toBeFalse()
             ->and(DB::table('migrations')->where('migration', 'like', '%lin_codex_probe%')->count())->toBe(0)
-            ->and(linCodexInstallCodexMigrationRows())->toBe(6);
+            ->and(linCodexInstallCodexMigrationRows())->toBe(7);
     } finally {
         File::delete($probe);
         Schema::dropIfExists('lin_codex_probe');

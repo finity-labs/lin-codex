@@ -37,7 +37,7 @@
     },
     "suggest": {
         "finity-labs/fin-codex": "Filament panel integration: help drawer, contextual help buttons, and the article editor.",
-        "finity-labs/lin-ai": "AI-assisted drafting, rewriting, and translation of help articles.",
+        "laravel/ai": "Optional AI translation of articles through the laravel/ai SDK (^0.11; needs PHP 8.3 and Laravel 12 or newer).",
         "laravel/scout": "Swap the built-in database search for a Scout driver."
     },
     "autoload": {
@@ -59,7 +59,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "0.2.x-dev"
+            "dev-main": "0.3.x-dev"
         },
         "laravel": {
             "providers": [

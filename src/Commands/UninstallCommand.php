@@ -16,13 +16,13 @@ use Throwable;
  * prints what will go, asks once (--force skips the question), then in
  * this order: drops the five tables in foreign-key order (media,
  * revisions, contexts, translations, articles) under the names the host
- * configured, deletes the lin-codex settings rows, deletes the
- * create_codex_* records from the migrations table so a reinstall
- * migrates again, removes the published files when --files is given,
- * and clears the settings cache and the package caches through
- * CacheClearer.
+ * configured, deletes the settings rows of both groups (lin-codex and
+ * lin-codex-ai), deletes the create_codex_* records from the migrations
+ * table so a reinstall migrates again, removes the published files when
+ * --files is given, and clears the settings cache and the package
+ * caches through CacheClearer.
  *
- * The settings rows go through the package settings migration's own
+ * The settings rows go through the package settings migrations' own
  * down(), which uses the migrator's deleteIfExists() and so works with
  * whatever settings repository the host configured, not only the
  * database one. --files covers config/lin-codex.php,
@@ -49,7 +49,7 @@ class UninstallCommand extends Command
             $this->line('  - table '.$table);
         }
 
-        $this->line('  - the lin-codex settings rows');
+        $this->line('  - the lin-codex and lin-codex-ai settings rows');
         $this->line('  - the create_codex_* rows in the migrations table');
         $this->line('  - the package caches');
 
@@ -108,6 +108,7 @@ class UninstallCommand extends Command
             resource_path('js/codex'),
             ...File::glob(database_path('migrations/*_create_codex_*_table.php')),
             ...File::glob(database_path('settings/*_create_codex_settings.php')),
+            ...File::glob(database_path('settings/*_create_codex_ai_settings.php')),
         ];
 
         return array_values(array_filter($candidates, static fn (string $path): bool => File::exists($path)));
@@ -138,6 +139,7 @@ class UninstallCommand extends Command
 
         try {
             (include dirname(__DIR__, 2).'/database/settings/create_codex_settings.php')->down();
+            (include dirname(__DIR__, 2).'/database/settings/create_codex_ai_settings.php')->down();
             $this->info('  Settings rows deleted');
         } catch (Throwable $e) {
             $this->components->warn('Could not delete the settings rows: '.$e->getMessage());

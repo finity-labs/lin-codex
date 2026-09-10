@@ -9,6 +9,7 @@ use FinityLabs\LinCodex\LinCodexServiceProvider;
 use FinityLabs\LinCodex\Rendering\ArticleRenderer;
 use FinityLabs\LinCodex\Rendering\Html\HtmlPipeline;
 use FinityLabs\LinCodex\Rendering\Markdown\MarkdownPipeline;
+use FinityLabs\LinCodex\Settings\CodexAiSettings;
 use FinityLabs\LinCodex\Sources\CompositeSource;
 use FinityLabs\LinCodex\Sources\DatabaseSource;
 use FinityLabs\LinCodex\Sources\FilesystemSource;
@@ -60,11 +61,21 @@ class TestCase extends Orchestra
      */
     protected function getPackageProviders($app): array
     {
-        return [
+        $providers = [
             LivewireServiceProvider::class,
             LaravelSettingsServiceProvider::class,
             LinCodexServiceProvider::class,
         ];
+
+        // Testbench never runs package discovery, so the optional laravel/ai
+        // SDK's provider is listed by hand: the AI seam's tests need the
+        // AiManager singleton and the config/ai.php it registers. A string on
+        // purpose, so nothing here names an SDK class.
+        if (class_exists('Laravel\\Ai\\AiServiceProvider')) {
+            $providers[] = 'Laravel\\Ai\\AiServiceProvider';
+        }
+
+        return $providers;
     }
 
     protected function defineEnvironment($app): void
@@ -121,6 +132,38 @@ class TestCase extends Orchestra
                 'foreign_key_constraints' => true,
             ],
         };
+    }
+
+    /**
+     * Turn AI translation on for a test: enabled, provider anthropic, no
+     * model (the provider's default), the stored key sk-test and the default
+     * 120 second timeout, plus whatever $overrides says.
+     *
+     * The values are saved, so a fresh app(CodexAiSettings::class) anywhere
+     * in the test reads them; the returned instance is one of those fresh
+     * reads rather than the one that was written.
+     *
+     * @param  array<string, mixed>  $overrides
+     */
+    public function enableAi(array $overrides = []): CodexAiSettings
+    {
+        $settings = app(CodexAiSettings::class);
+
+        $values = array_merge([
+            'enabled' => true,
+            'provider' => 'anthropic',
+            'model' => null,
+            'api_key' => 'sk-test',
+            'timeout' => 120,
+        ], $overrides);
+
+        foreach ($values as $key => $value) {
+            $settings->{$key} = $value;
+        }
+
+        $settings->save();
+
+        return app(CodexAiSettings::class);
     }
 
     /**
@@ -211,7 +254,7 @@ class TestCase extends Orchestra
 
     /**
      * The host tables the package depends on come first, then the package
-     * schema in dependency order, then the settings seed.
+     * schema in dependency order, then the two settings seeds.
      */
     private function createPackageSchema(): void
     {
@@ -283,6 +326,7 @@ class TestCase extends Orchestra
     private function seedSettings(): void
     {
         (include dirname(__DIR__).'/database/settings/create_codex_settings.php')->up();
+        (include dirname(__DIR__).'/database/settings/create_codex_ai_settings.php')->up();
     }
 
     /**

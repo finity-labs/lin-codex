@@ -121,6 +121,25 @@ return [
         'tip' => 'Tartsa rövidre a cikkeket, és ismétlés helyett hivatkozzon a kapcsolódó cikkekre.',
     ],
 
+    'ai' => [
+        'reasons' => [
+            'timeout' => 'A szolgáltató nem válaszolt időben.',
+            'authentication_failed' => 'A szolgáltató elutasította az API-kulcsot.',
+            'rate_limited' => 'A szolgáltató korlátozza a kéréseket. Próbálja újra egy perc múlva.',
+            'quota_exceeded' => 'A szolgáltató elfogyott keretet vagy egyenleget jelez.',
+            'output_rejected' => 'A választ elutasítottuk, mert gyanús jelölést tartalmazott.',
+            'invalid_output' => 'A válasz hiányos vagy hibás volt.',
+            'unavailable' => 'Az MI-fordítás nem érhető el.',
+            'unknown' => 'A kérés ismeretlen okból meghiúsult.',
+        ],
+        'unavailable' => [
+            'sdk_missing' => 'A laravel/ai csomag nincs telepítve.',
+            'not_migrated' => 'Az MI-beállítások migrációja még nem futott le.',
+            'disabled' => 'Az MI-fordítás ki van kapcsolva.',
+            'no_key' => 'Nincs beállítva sem szolgáltató, sem API-kulcs.',
+        ],
+    ],
+
     /*
      * A mappacsoportok (indexfájl nélküli mappák) címkéi a csoport teljes
      * slugja szerint: 'users' => 'Felhasználók', 'billing/archive' =>

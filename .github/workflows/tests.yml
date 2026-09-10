@@ -8,7 +8,7 @@ on:
 
 jobs:
   tests:
-    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}${{ matrix.database && format(' / {0}', matrix.database) || '' }}
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}${{ matrix.database && format(' / {0}', matrix.database) || '' }}${{ matrix.sdk && ' / +sdk' || '' }}
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental == true }}
     strategy:
@@ -23,6 +23,8 @@ jobs:
           - { php: '8.3', laravel: '^13.0', testbench: '^11.0', database: mysql }
           - { php: '8.3', laravel: '^13.0', testbench: '^11.0', database: pgsql }
           - { php: '8.3', laravel: '^12.0', testbench: '^10.0', livewire: '^3.0' }
+          - { php: '8.3', laravel: '^12.0', testbench: '^10.0', sdk: true }
+          - { php: '8.4', laravel: '^13.0', testbench: '^11.0', sdk: true }
     services:
       mysql:
         image: ${{ matrix.database == 'mysql' && 'mysql:8.4' || '' }}
@@ -56,6 +58,16 @@ jobs:
             --with "illuminate/contracts:${{ matrix.laravel }}" \
             --with "livewire/livewire:${{ matrix.livewire || '^4.0' }}" \
             --with "orchestra/testbench:${{ matrix.testbench }}"
+
+      # The SDK stays a suggest dependency, so the +sdk rows install it after the
+      # normal install and then put the manifest back: composer require writes a
+      # require line that tests/Unit/ComposerConstraintsTest.php exists to catch.
+      # Restoring composer.json leaves vendor/ (and so class_exists) untouched.
+      - name: Install laravel/ai
+        if: matrix.sdk
+        run: |
+          composer require "laravel/ai:^0.11" --no-interaction --no-progress
+          git checkout -- composer.json
 
       - name: Run tests
         env:

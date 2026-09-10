@@ -9,3 +9,9 @@ parameters:
     level: 5
     configDirectories:
         - config
+    excludePaths:
+        analyse:
+            # src/Ai/TranslationAgent.php extends a class from the optional laravel/ai SDK. PHPStan refuses to
+            # ignore "extends unknown class" (it points at excludePaths itself), and a plain excludePaths entry
+            # would drop the class from the symbol table and make TranslationAgent::class in the seam unknown.
+            - src/Ai/TranslationAgent.php

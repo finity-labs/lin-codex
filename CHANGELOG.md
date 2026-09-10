@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-10
+
+### Added
+
+- AI translation settings in a group of their own: `Settings\CodexAiSettings` (`enabled`, `provider`, `model`, an encrypted `api_key`, a `timeout` shared by both translation paths, and the editable `translation_instructions`) with its own seed under `database/settings`, so a group that was never seeded means AI is off rather than an error. `codex:install` publishes and runs the seed and `codex:uninstall` deletes its rows and its published file; an existing install opts in with `php artisan vendor:publish --tag=lin-codex-migrations` followed by `php artisan migrate`.
+- A seam over the optional `laravel/ai` SDK, `Ai\Contracts\AiClient` with `Ai\LaravelAiClient` behind it: the nine offered providers under the SDK's own labels (Anthropic, OpenAI, Gemini, Mistral, Groq, DeepSeek, xAI, OpenRouter and Ollama), each provider's default, cheapest and smartest model, one structured call per translation with the stored key injected for that call alone and the SDK's env key as the fallback, a `Reply with the single word OK.` connection test on a ten-second timeout, output canaries, and a map from the SDK's exceptions to reason keys. Every SDK class is named as a string, so PHPStan and a host without the SDK are both fine.
+- `Ai\AiAvailabilityCheck`, the one rule every entry point asks, answering `sdk_missing`, `not_migrated`, `disabled` or `no_key` in that order. A key stored in the settings wins, a provider's env key in the host's `config/ai.php` counts as well, and Ollama is checked through its URL because it needs no key.
+- `Translation\ArticleTranslator` with `translate($article, $target)` for a stored article and `translateText($title, $excerpt, $body, $target)` for unsaved form fields. Both return a reviewed `Translation\TranslationResult` and write nothing. The prompt is a fixed contract the package owns followed by the admin's instructions, it names both languages by display name and code, and it keeps fenced and inline code, URLs and link targets, image paths, the callout keywords, the `:::steps` and `:::details` fences and HTML tags untranslated. Every answer is reviewed before it comes back: a truncated, empty or structurally broken payload fails as `invalid_output`, a canary the source itself does not carry fails as `output_rejected`, one outer code fence is stripped, and a blank source excerpt stays blank whatever the model wrote.
+- `Translation\MissingTranslations`, naming the configured locales an article lacks; a row whose title or body is blank counts as missing and the default locale never does.
+- `Jobs\TranslateArticle`, one queued job per article carrying locale codes and the id of the admin who queued it, on the app's default queue unless `lin-codex.ai.queue` names another. It re-checks availability and each locale at run time, skips a locale that was filled in the meantime, writes each success through the normal save path under `RevisionManager::attributing(RevisionReason::Manual, $userId)` so the revision and the search text ride along, leaves a failed locale missing with its reason and carries on, and always ends with an `Events\ArticleTranslated` event carrying a per-locale `Translation\TranslationReport`.
+- Config block `lin-codex.ai` (`queue`, `max_tokens`, `check_structure`, `output_canaries`), and the lang keys `ai.reasons.*` and `ai.unavailable.*` in English, German and Hungarian.
+- Two `+sdk` CI rows, PHP 8.3 on Laravel 12 and PHP 8.4 on Laravel 13, that install `laravel/ai` before the suite and run the AI tests; those tests skip on every other row, as they do on a host without the SDK.
+
+### Changed
+
+- `laravel/ai` (`^0.11`, which needs PHP 8.3 and Laravel 12 or newer) replaces the postponed `finity-labs/lin-ai` under `suggest`. lin-codex itself still runs on PHP 8.2 and Laravel 11; the SDK's floor applies only to a host that installs it.
+
 ## [0.2.2] - 2026-09-09
 
 ### Added

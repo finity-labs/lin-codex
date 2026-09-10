@@ -320,4 +320,41 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | AI translation
+    |--------------------------------------------------------------------------
+    |
+    | Nothing here does anything until the optional "laravel/ai" package is
+    | installed and the AI settings are migrated and switched on. Without
+    | those, the tab and the row actions report that AI is unavailable and
+    | this block is inert.
+    |
+    | "queue" names the queue the TranslateArticle job goes to; null means the
+    | default queue of the default connection, so a host without a worker runs
+    | it inline through the sync driver.
+    |
+    | "max_tokens" is the output ceiling for one translation call. German and
+    | Hungarian run about 1.3x the English length, so leave headroom; the SDK
+    | sends this to every provider that accepts a ceiling.
+    |
+    | "check_structure" rejects a translation that dropped a code fence or
+    | changed a link or image target instead of saving it.
+    |
+    | "output_canaries" are extra markers whose presence in an answer marks it
+    | as hijacked, on top of the built-in list in Ai\OutputCanaries.
+    |
+    | One caution for database and Redis queues: "retry_after" on the queue
+    | connection must exceed the job timeout, which is locales x timeout plus
+    | 30 seconds. See the README section on queued translation.
+    |
+    */
+
+    'ai' => [
+        'queue' => null,
+        'max_tokens' => 16000,
+        'check_structure' => true,
+        'output_canaries' => [],
+    ],
+
 ];

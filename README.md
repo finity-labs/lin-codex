@@ -28,6 +28,7 @@ Filament panels get all of this plus an article editor and panel-aware contexts 
 - Laravel 11, 12 or 13
 - Livewire 3 or 4
 - MySQL, MariaDB, PostgreSQL or SQLite
+- AI translation (optional): PHP 8.3 or newer, Laravel 12 or newer and `laravel/ai` ^0.11
 
 ## Installation
 
@@ -350,6 +351,167 @@ $ php artisan codex:revisions:restore 118 --user=1
 Restored revision 118 (de) of users/roles.
 ```
 
+## AI translation
+
+lin-codex can translate an article into your other languages with an AI provider. It's optional in three independent ways: the SDK isn't a dependency, the settings live in a migration you choose to run, and the whole thing has an off switch. Until all three are in place every AI entry point reports itself unavailable, and nothing else about the package changes.
+
+The buttons live in [fin-codex](https://github.com/finity-labs/fin-codex) — a settings page, a translate action on the editor tab, row and bulk actions. What's documented here is the engine underneath, and all of it is callable from your own code.
+
+### Setup
+
+```bash
+composer require laravel/ai
+```
+
+The SDK wants PHP 8.3 and Laravel 12 or newer, which is why lin-codex only suggests it: the package itself still runs on PHP 8.2 and Laravel 11.
+
+A fresh `codex:install` already seeds the AI settings, so there's nothing more to do. An existing install publishes and runs the new settings migration once:
+
+```bash
+php artisan vendor:publish --tag=lin-codex-migrations
+php artisan migrate
+```
+
+The seed lands in `database/settings` and adds the `lin-codex-ai` group. Its rows are inert until you turn AI on:
+
+```php
+use FinityLabs\LinCodex\Settings\CodexAiSettings;
+use FinityLabs\LinCodex\Translation\DefaultInstructions;
+
+$settings = app(CodexAiSettings::class);
+$settings->enabled = true;
+$settings->provider = 'anthropic';
+$settings->model = null;                                            // the provider's default text model
+$settings->api_key = 'sk-...';                                      // stored encrypted
+$settings->timeout = 120;                                           // seconds; the default
+$settings->translation_instructions = DefaultInstructions::TEXT;    // the editable half of the prompt, below
+$settings->save();
+```
+
+`api_key` is encrypted at rest through spatie's `#[ShouldBeEncrypted]`. Leave it null and the SDK's own credential from `config/ai.php` is used untouched, so a host that already configured `laravel/ai` doesn't store the key twice. `timeout` covers both paths a translation takes, the synchronous action in the panel and the queued job.
+
+### Providers and models
+
+Nine providers are offered: Anthropic, OpenAI, Gemini, Mistral, Groq, DeepSeek, xAI, OpenRouter and Ollama. Those are the ones an API key alone can reach. Azure needs a resource URL and a deployment name, Bedrock needs AWS credentials and a region, and the OpenAI-compatible provider needs a base URL — none of that fits in a key field, so a host running one of those configures it in its own `config/ai.php` and lin-codex stays out of the way. Ollama is offered but keyless: its URL and optional key come from `config/ai.php` too.
+
+The model is stored as a concrete id. Rather than keep a table of model ids that goes stale every month, the seam asks the SDK what a provider's three tiers currently are:
+
+```php
+use FinityLabs\LinCodex\Ai\Contracts\AiClient;
+
+$client = app(AiClient::class);
+$client->providers();                 // ['anthropic' => 'Anthropic', 'xai' => 'xAI', ...]
+$client->tierModels('anthropic');     // ['default' => ..., 'cheapest' => ..., 'smartest' => ...]
+$client->testConnection('anthropic', null, 'sk-...');   // null on success, else a reason key
+```
+
+`testConnection()` sends one round trip ("Reply with the single word OK.") on a ten-second timeout and answers with a reason key instead of throwing, so a settings page can show the failure next to the field that caused it.
+
+Whether translation can run at all is a single rule, and it's the one to ask. The panel actions and the queued job both do:
+
+```php
+use FinityLabs\LinCodex\Ai\AiAvailabilityCheck;
+
+$state = app(AiAvailabilityCheck::class)->check();
+$state->available;   // bool
+$state->reason;      // null, or one of the four keys below
+$state->label();     // that key in the current locale, '' when available
+```
+
+The keys are checked in order, so the first thing to fix is the one you're told about. `sdk_missing` means `laravel/ai` isn't installed. `not_migrated` means the AI settings group was never seeded — where an upgraded install sits until it runs the migration above, and the normal "AI is off" state rather than an error. `disabled` means the toggle is off. `no_key` means no provider is chosen, the chosen one isn't offered, or there's no credential for it: neither a stored key nor the SDK's env key, or for Ollama, no URL.
+
+Worth knowing before you pick one: DeepSeek, Groq and Ollama have no native structured output in the SDK, so the JSON schema reaches them as prose in the prompt and they're likelier to answer with malformed JSON. That comes back as `invalid_output`. Anthropic, OpenAI, Gemini, Mistral, xAI and OpenRouter are the safer choices for translation.
+
+### Translating from code
+
+```php
+use FinityLabs\LinCodex\Translation\ArticleTranslator;
+
+$result = app(ArticleTranslator::class)->translate($article, 'de');
+```
+
+`translate()` reads the article's source row — the default language, unless you name another as the third argument — and translates it into the target. `translateText($title, $excerpt, $body, 'de')` does the same for text you're holding, which is what a panel form does with fields somebody edited but hasn't saved yet.
+
+Neither one writes anything. What comes back is a value:
+
+```php
+$result->ok;                // bool
+$result->title;             // string on success
+$result->excerpt;           // string, or null when the source excerpt was blank
+$result->body;              // string on success
+$result->promptTokens;
+$result->completionTokens;
+$result->reason;            // an Ai\AiReason key on failure
+$result->reasonLabel();     // that key in the current locale
+```
+
+A failure is a value and not an exception, because both callers work language by language and have to carry on. The reason keys are `timeout`, `authentication_failed`, `rate_limited`, `quota_exceeded`, `output_rejected`, `invalid_output`, `unavailable` and `unknown`, with labels in English, German and Hungarian. Two things do throw, and both are bugs at the call site: a target equal to the source, and an article with nothing to translate in the source language.
+
+The answer is reviewed in PHP before you get it, and that review is most of what the class does. A source excerpt that was blank stays blank whatever the model wrote there, because "don't invent content" is a promise the package keeps rather than an instruction it hopes was followed. A truncated or empty answer is `invalid_output` — a model that stops at the output ceiling returns a body that looks fine and ends mid-sentence. A suspicious marker in the answer, a chat-template delimiter or an injection phrase, is `output_rejected`, unless the article carries that marker itself: a help page about PWNED passwords has to stay translatable. And while `lin-codex.ai.check_structure` is on, a body that lost a code fence or had a link target "translated" is `invalid_output` instead of something that ships to readers.
+
+### Missing translations and the queued job
+
+`MissingTranslations` names the languages an article still lacks:
+
+```php
+use FinityLabs\LinCodex\Translation\MissingTranslations;
+
+$missing = app(MissingTranslations::class);
+$missing->for($article);               // ['de', 'hu']
+$missing->isMissing($article, 'de');   // bool
+$missing->candidates();                // every configured language except the default
+```
+
+A language counts as missing when the article has no row for it, or has one whose title or body is blank. A title with no body is what somebody leaves behind after starting a translation and walking away, and that's exactly the row you want the AI to finish. The default language is the source, so it's never a candidate.
+
+The job takes it from there:
+
+```php
+use FinityLabs\LinCodex\Jobs\TranslateArticle;
+
+TranslateArticle::dispatch($article->id, ['de', 'hu'], $userId);
+```
+
+One job per article, carrying ids rather than models, so an article deleted between dispatch and work becomes a reported outcome instead of a failed job. It goes to the default connection and queue unless `lin-codex.ai.queue` names another, and a host with no worker runs it inline on the `sync` driver and watches the rows appear during the request.
+
+At run time it asks the availability rule again — a key can be removed or the toggle flipped in the meantime — and re-checks each language for content, so one that was filled since dispatch is skipped rather than overwritten. Each success is written through the package's normal save path inside `RevisionManager::attributing(RevisionReason::Manual, $userId)`, so revisions (when they're on) record the previous content with reason `manual` and the dispatching user as its author, and the search text is indexed. The reason is `manual` on purpose: the AI only made the translation easier to produce, the admin is still the one publishing it. A language that fails is left missing with its reason and the next one is tried.
+
+However the run ends, it ends with an event:
+
+```php
+use FinityLabs\LinCodex\Events\ArticleTranslated;
+use Illuminate\Support\Facades\Event;
+
+Event::listen(function (ArticleTranslated $event) {
+    $event->report->toArray();
+    // ['de' => ['status' => 'translated', 'reason' => null, 'prompt_tokens' => 812, 'completion_tokens' => 1104],
+    //  'hu' => ['status' => 'failed', 'reason' => 'rate_limited', 'prompt_tokens' => 0, 'completion_tokens' => 0]]
+});
+```
+
+Every requested language lands in exactly one of three statuses — `translated`, `skipped` or `failed` with a reason — in the order the job worked through them. fin-codex renders that report as a notification.
+
+One thing to set up if you queue more than one language at a time. The job sizes its own timeout as `locales x timeout + 30` seconds, which is 390 for three languages at the default 120. The database and Redis queue drivers re-deliver a job that's still running once `retry_after` has passed, and that's 90 seconds by default, so raise `retry_after` on the connection above the job's timeout or the same article gets translated twice at once. It's Laravel's own rule: [`retry_after` must always be longer than the job's timeout](https://laravel.com/docs/12.x/queues#job-expirations-and-timeouts).
+
+### What the prompt keeps
+
+The prompt has two halves. The contract lin-codex owns says the answer is a JSON object with `title`, `excerpt` and `body` and nothing else, and lists what has to survive untouched: fenced and inline code, URLs and link targets including relative paths and anchors, image paths (only the alt text of `![alt](path)` is translated), the callout keywords `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` and `[!CAUTION]`, the `:::steps`, `:::details` and `:::` fences, HTML tags and their attributes, and heading levels, list markers, table layout and emphasis markers. The three source fields travel in delimited blocks so their text can't be read as instructions.
+
+The other half is yours. `translation_instructions` is seeded from `Translation\DefaultInstructions::TEXT`, which asks for a faithful translation, the formal register in languages that have one (German "Sie", Hungarian "Ön"), consistent terminology, and nothing added, dropped or explained. Edit it to taste. The contract is always put in front of it, so you can change how an article is translated but never the shape of the answer or which Markdown tokens survive.
+
+Both languages are named the way your settings spell them, `Deutsch (de)`, from the display name in `CodexSettings::$languages` with the code beside it. A display value like "Hungarian (formal)" reaches the model exactly as you wrote it, and the code leaves no ambiguity about which language is meant.
+
+Four config keys under `lin-codex.ai`:
+
+| Key | Default | What it does |
+|---|---|---|
+| `queue` | `null` | The queue `TranslateArticle` goes to; null means the default queue of the default connection. |
+| `max_tokens` | `16000` | The output ceiling for one call. German and Hungarian run about 1.3x the English length, so leave headroom. |
+| `check_structure` | `true` | Reject a translation that dropped a code fence or changed a link or image target. |
+| `output_canaries` | `[]` | Extra markers that mark an answer as hijacked, on top of the built-in list. |
+
+One caveat that isn't solved here: headings are prose, so they get translated, and a translated heading's anchor id differs from the source's. A hint pointing at `#reset-a-password` has nothing to point at in the German article. That's exactly what happens with a hand-written translation today.
+
 ## Searching
 
 Users find articles by typing words in their own language. Results follow the same visibility and language rules as everything else, so a search never lists an article the reader would then refuse. The same query returns the same hits in the same order on MySQL, MariaDB, PostgreSQL, SQLite and on a file-only install, because the database only pre-filters rows; PHP decides what matches and how it ranks.
@@ -564,7 +726,7 @@ codex:install [--force] [--assets]
 | `--force` | Overwrite an existing `config/lin-codex.php`. |
 | `--assets` | Publish the stylesheet to `public/vendor/lin-codex/codex.css`. |
 
-Takes an app from `composer require` to a working package in one run, in this order: publish the config unless it's already there; create the `settings` table of spatie/laravel-settings when the app has none; publish the package migrations (the five `codex_*` tables and the settings seed under `database/settings`) and run exactly those files; seed the `lin-codex` settings group if the seed didn't; publish the stylesheet with `--assets`; run `codex:reindex`; print the next steps.
+Takes an app from `composer require` to a working package in one run, in this order: publish the config unless it's already there; create the `settings` table of spatie/laravel-settings when the app has none; publish the package migrations (the five `codex_*` tables and the two settings seeds under `database/settings`) and run exactly those files; seed the `lin-codex` and `lin-codex-ai` settings groups if their seeds didn't; publish the stylesheet with `--assets`; run `codex:reindex`; print the next steps.
 
 ```
 $ php artisan codex:install
@@ -579,6 +741,7 @@ Running the package migrations...
   ...
   Migrations complete
   Settings seeded (lin-codex group, 10 revisions kept per language)
+  AI settings seeded (lin-codex-ai group, AI translation off)
 Re-indexing translations...
   0 translations indexed
   In-memory index rebuilt with 0 documents
@@ -591,9 +754,12 @@ lin-codex installed.
 | Add the styles                | <x-lin-codex::styles /> in <head>                                                        |
 | Add the button and the drawer | <x-lin-codex::help-button /> anywhere, <x-lin-codex::help-drawer /> once before </body>  |
 | Write the first article       | php artisan codex:make intro --title="Introduction" (resources/codex/en/ is created for you) |
+| Translate with AI             | composer require laravel/ai (PHP 8.3+, Laravel 12+), then enable it in the AI settings; see the README |
 | Find pages without help       | php artisan codex:coverage                                                               |
 +-------------------------------+------------------------------------------------------------------------------------------+
 ```
+
+The AI row is a pointer, not a requirement: the `lin-codex-ai` group is seeded off and nothing about it runs until the SDK is installed and the toggle switched on.
 
 Every step is safe to repeat: a second run reports `Config already published (pass --force to overwrite)` and `Nothing to migrate`. The migrations run by path, so the app's own pending migrations stay out of an install that only asked for the package's; they're recorded in the migrations table like any other, and the next plain `migrate` skips them.
 

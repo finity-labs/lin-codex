@@ -122,6 +122,25 @@ return [
         'tip' => 'Halten Sie Artikel kurz und verlinken Sie verwandte Artikel, statt sie zu wiederholen.',
     ],
 
+    'ai' => [
+        'reasons' => [
+            'timeout' => 'Der Anbieter hat nicht rechtzeitig geantwortet.',
+            'authentication_failed' => 'Der Anbieter hat den API-Schlüssel abgelehnt.',
+            'rate_limited' => 'Der Anbieter drosselt die Anfragen. Versuchen Sie es in einer Minute erneut.',
+            'quota_exceeded' => 'Der Anbieter meldet ein aufgebrauchtes Kontingent oder Guthaben.',
+            'output_rejected' => 'Die Antwort wurde abgelehnt, weil sie eine verdächtige Markierung enthielt.',
+            'invalid_output' => 'Die Antwort war unvollständig oder fehlerhaft.',
+            'unavailable' => 'Die KI-Übersetzung steht nicht zur Verfügung.',
+            'unknown' => 'Die Anfrage ist aus unbekanntem Grund fehlgeschlagen.',
+        ],
+        'unavailable' => [
+            'sdk_missing' => 'Das Paket laravel/ai ist nicht installiert.',
+            'not_migrated' => 'Die KI-Einstellungen wurden noch nicht migriert.',
+            'disabled' => 'Die KI-Übersetzung ist ausgeschaltet.',
+            'no_key' => 'Es sind weder ein Anbieter noch ein API-Schlüssel eingerichtet.',
+        ],
+    ],
+
     /*
      * Bezeichnungen für Ordnergruppen (Ordner ohne Indexdatei), abgelegt
      * unter dem vollständigen Slug der Gruppe: 'users' => 'Benutzer',

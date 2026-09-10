@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use FinityLabs\LinCodex\Rendering\ArticleRenderer;
 use FinityLabs\LinCodex\Search\InMemoryIndex;
+use FinityLabs\LinCodex\Settings\CodexAiSettings;
 use FinityLabs\LinCodex\Settings\CodexSettings;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
@@ -45,6 +46,11 @@ function linCodexUninstallSettingsRows(): int
     return DB::table('settings')->where('group', 'lin-codex')->count();
 }
 
+function linCodexUninstallAiSettingsRows(): int
+{
+    return DB::table('settings')->where('group', 'lin-codex-ai')->count();
+}
+
 it('is discovered under its name', function (): void {
     expect(Artisan::all())->toHaveKey('codex:uninstall');
 });
@@ -64,6 +70,7 @@ it('lists what will go and removes nothing when declined', function (): void {
         }
 
         expect(linCodexUninstallSettingsRows())->toBe(count(CodexSettings::defaults()))
+            ->and(linCodexUninstallAiSettingsRows())->toBe(count(CodexAiSettings::defaults()))
             ->and(app(CodexSettings::class)->refresh()->revisions_keep)->toBe(10);
     } finally {
         $this->markPackageSchemaDirty();
@@ -92,6 +99,7 @@ it('drops the tables, the settings rows and the package migration records with -
         }
 
         expect(linCodexUninstallSettingsRows())->toBe(0)
+            ->and(linCodexUninstallAiSettingsRows())->toBe(0)
             ->and(DB::table('migrations')->pluck('migration')->all())->toBe(['2024_01_01_000001_create_users_table']);
     } finally {
         Schema::dropIfExists('migrations');
@@ -125,9 +133,10 @@ it('--files removes the published files and never touches the docs folder', func
     $stub = resource_path('js/codex/codex.ts');
     $migration = database_path('migrations/2024_01_01_000000_create_codex_articles_table.php');
     $settingsMigration = database_path('settings/2024_01_01_000000_create_codex_settings.php');
+    $aiSettingsMigration = database_path('settings/2024_01_01_000000_create_codex_ai_settings.php');
     $docs = resource_path('codex/en/intro.md');
 
-    foreach ([$config, $stylesheet, $stub, $migration, $settingsMigration, $docs] as $file) {
+    foreach ([$config, $stylesheet, $stub, $migration, $settingsMigration, $aiSettingsMigration, $docs] as $file) {
         File::ensureDirectoryExists(dirname($file));
         File::put($file, '// lin-codex uninstall test');
     }
@@ -139,6 +148,7 @@ it('--files removes the published files and never touches the docs folder', func
             ->expectsOutputToContain('Deleted '.resource_path('js/codex'))
             ->expectsOutputToContain('Deleted '.$migration)
             ->expectsOutputToContain('Deleted '.$settingsMigration)
+            ->expectsOutputToContain('Deleted '.$aiSettingsMigration)
             ->assertExitCode(0);
 
         expect(File::exists($config))->toBeFalse()
@@ -148,10 +158,11 @@ it('--files removes the published files and never touches the docs folder', func
             ->and(File::isDirectory(resource_path('js/codex')))->toBeFalse()
             ->and(File::exists($migration))->toBeFalse()
             ->and(File::exists($settingsMigration))->toBeFalse()
+            ->and(File::exists($aiSettingsMigration))->toBeFalse()
             ->and(File::exists($docs))->toBeTrue()
             ->and(File::get($docs))->toBe('// lin-codex uninstall test');
     } finally {
-        File::delete([$config, $stylesheet, $stub, $migration, $settingsMigration, $docs]);
+        File::delete([$config, $stylesheet, $stub, $migration, $settingsMigration, $aiSettingsMigration, $docs]);
         File::deleteDirectory(public_path('vendor/lin-codex'));
         File::deleteDirectory(resource_path('js/codex'));
 

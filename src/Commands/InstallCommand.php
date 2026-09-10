@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FinityLabs\LinCodex\Commands;
 
 use FinityLabs\LinCodex\LinCodexServiceProvider;
+use FinityLabs\LinCodex\Settings\CodexAiSettings;
 use FinityLabs\LinCodex\Settings\CodexSettings;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
@@ -18,10 +19,10 @@ use Spatie\LaravelSettings\LaravelSettingsServiceProvider;
  * package in one run, in this order: publish the config (kept when it
  * exists, --force overwrites), create spatie's settings table when the
  * host has none, publish the package migrations (the five tables plus
- * the settings seed under database/settings), run exactly those files,
- * seed the settings group if the seed did not run, publish the
- * stylesheet with --assets, then codex:reindex. It ends with a summary
- * and the next steps.
+ * the two settings seeds under database/settings), run exactly those
+ * files, seed either settings group if its seed did not run, publish
+ * the stylesheet with --assets, then codex:reindex. It ends with a
+ * summary and the next steps.
  *
  * The migrations are run with --path (the published app paths from
  * pathsToPublish), --realpath and --force. --path with --realpath keeps
@@ -54,6 +55,7 @@ class InstallCommand extends Command
         $this->ensureSettingsTableExists();
         $this->publishAndRunMigrations();
         $this->ensureSettingsSeeded();
+        $this->ensureAiSettingsSeeded();
 
         if ($this->option('assets')) {
             $this->comment('Publishing the stylesheet...');
@@ -73,6 +75,7 @@ class InstallCommand extends Command
             ['Add the styles', '<x-lin-codex::styles /> in <head>'],
             ['Add the button and the drawer', '<x-lin-codex::help-button /> anywhere, <x-lin-codex::help-drawer /> once before </body>'],
             ['Write the first article', 'php artisan codex:make intro --title="Introduction" (resources/codex/'.$locale.'/ is created for you)'],
+            ['Translate with AI', 'composer require laravel/ai (PHP 8.3+, Laravel 12+), then enable it in the AI settings; see the README'],
             ['Find pages without help', 'php artisan codex:coverage'],
         ]);
 
@@ -158,5 +161,25 @@ class InstallCommand extends Command
         }
 
         $this->info(sprintf('  Settings seeded (lin-codex group, %d revisions kept per language)', $keep));
+    }
+
+    /**
+     * The same fallback for the AI settings group, which lives in its own
+     * seed so a host that upgrades lin-codex opts into it. The rows are
+     * inert: AI translation stays off until the laravel/ai SDK, the
+     * toggle and a key are all there.
+     */
+    private function ensureAiSettingsSeeded(): void
+    {
+        try {
+            $settings = app(CodexAiSettings::class);
+            $settings->refresh();
+            $enabled = $settings->enabled;
+        } catch (MissingSettings) {
+            (include dirname(__DIR__, 2).'/database/settings/create_codex_ai_settings.php')->up();
+            $enabled = (bool) CodexAiSettings::defaults()['enabled'];
+        }
+
+        $this->info(sprintf('  AI settings seeded (lin-codex-ai group, AI translation %s)', $enabled ? 'on' : 'off'));
     }
 }

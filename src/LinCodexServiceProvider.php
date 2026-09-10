@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FinityLabs\LinCodex;
 
+use FinityLabs\LinCodex\Ai\Contracts\AiClient;
+use FinityLabs\LinCodex\Ai\LaravelAiClient;
 use FinityLabs\LinCodex\Assets\StylesheetVersion;
 use FinityLabs\LinCodex\Contracts\ContentSource;
 use FinityLabs\LinCodex\Livewire\HelpCenter;
@@ -46,6 +48,7 @@ class LinCodexServiceProvider extends PackageServiceProvider
                 'create_codex_article_revisions_table',
                 'create_codex_media_table',
                 '../settings/create_codex_settings',
+                '../settings/create_codex_ai_settings',
             ])
             ->hasConsoleCommands($this->commandClasses());
     }
@@ -112,6 +115,14 @@ class LinCodexServiceProvider extends PackageServiceProvider
         $this->app->scoped(PageHelpResolver::class);
         $this->app->singleton(StylesheetVersion::class);
         $this->app->singleton(RevisionManager::class);
+
+        /*
+         * The AI seam is a singleton so its SDK detection, provider cache and
+         * per-call config swaps happen once per process rather than per
+         * caller. Tests replace it wholesale with
+         * app()->instance(AiClient::class, $fake).
+         */
+        $this->app->singleton(AiClient::class, LaravelAiClient::class);
     }
 
     /**
