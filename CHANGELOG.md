@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-10
+
+### Changed
+
+- `lin-codex.routes.help_center` set to `null` switches the public help center off: neither `lin-codex.help-center` nor `lin-codex.help-center.article` is registered and `/help` and `/help/{slug}` answer 404 like any other unknown URL, while the drawer, `<x-lin-codex::help-button />` and the media, JSON API and stylesheet routes carry on. The `lin-codex.help-center` Livewire component and `routes.help_center_layout` stay registered too, so you can mount the page on a route of your own. The default is still `/help`.
+- A prefix the route file cannot use — `""`, `"/"`, or a value that is not a string — is refused with an `InvalidArgumentException` naming the key and echoing the value, thrown when the route file loads and before any route is registered. It used to mount the help center at the site root. Only `null` switches the page off.
+- `Rendering\ArticlePath::helpCenterHref(): ?string` gives the help center root as an absolute URL, or null when the page is off. The drawer footer and `<x-lin-codex::help-button />` build their link from it — from the prefix, read at call time — instead of from the `lin-codex.help-center` route name, so a prefix a host writes at runtime with `config()->set()` is followed and neither can throw a `RouteNotFoundException`. With the page off the footer renders without its "Open the help center" link and the button keeps its markup with `href="#"`, still opening the drawer on a click. `ArticlePath::href()` is unchanged and still writes `/{slug}` on a null prefix.
+- `Livewire\HelpDrawer::viewData()`'s `helpCenterUrl` is `?string` where it was `string` — the one shape change in this release. A host layer that extends `HelpDrawer` and reads that array has to handle null.
+
+### Fixed
+
+- `Jobs\TranslateArticle::handle()` hands the throwable it catches to `report()` before it records the locale as failed with `unknown`, the way `Ai\LaravelAiClient` and `Translation\ArticleTranslator` have since 0.3.1. A `QueryException` or a translator guard on a queued run now leaves a stack in the host's log instead of a bare reason key.
+- A null `lin-codex.routes.help_center` used to fall through to an empty prefix, which mounted the article route at the site root, where its catch-all pattern also swallowed the stylesheet route declared below it — `/codex/assets/codex.css` answered `text/html`. Switching the page off takes both routes out instead.
+
 ## [0.3.1] - 2026-09-10
 
 ### Fixed

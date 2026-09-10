@@ -131,3 +131,18 @@ it('falls back to the package layout for an empty layout name', function (): voi
     expect($response->getStatusCode())->toBe(200)
         ->and((string) $response->getContent())->toContain('codex-help-center-header', '/codex/assets/codex.css?v=', 'data-codex-help-center');
 });
+
+it('refuses a prefix that would mount the page at the site root', function (mixed $value): void {
+    config()->set('lin-codex.routes.help_center', $value);
+
+    expect(function (): void {
+        require dirname(__DIR__, 3).'/routes/web.php';
+    })->toThrow(InvalidArgumentException::class, 'lin-codex.routes.help_center');
+
+    expect(Route::has('lin-codex.help-center'))->toBeTrue();
+})->with([
+    'empty' => '',
+    'slash' => '/',
+    'double slash' => '//',
+    'false' => false,
+]);

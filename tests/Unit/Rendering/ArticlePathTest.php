@@ -57,6 +57,36 @@ it('builds the help center href with a bare heading, a hash fragment or none', f
         ->and(ArticlePath::href('users/roles'))->toBe('/help/users/roles');
 });
 
+it('builds the help center root from the prefix at call time', function (): void {
+    expect(ArticlePath::helpCenterHref())->toBe('http://localhost/help');
+
+    config()->set('lin-codex.routes.help_center', '/docs/');
+
+    expect(ArticlePath::helpCenterHref())->toBe('http://localhost/docs');
+
+    config()->set('lin-codex.routes.help_center', 'https://app.test/manual/');
+
+    expect(ArticlePath::helpCenterHref())->toBe('https://app.test/manual');
+});
+
+it('answers null for the help center root when the public page is off', function (): void {
+    config()->set('lin-codex.routes.help_center', null);
+
+    expect(ArticlePath::helpCenterHref())->toBeNull();
+});
+
+it('builds a root-relative article href on a null prefix and follows a prefix set later', function (): void {
+    config()->set('lin-codex.routes.help_center', null);
+
+    expect(ArticlePath::href('users/roles', '#x'))->toBe('/users/roles#x')
+        ->and(ArticlePath::href('users'))->toBe('/users');
+
+    config()->set('lin-codex.routes.help_center', '/admin/help');
+
+    expect(ArticlePath::href('users'))->toBe('/admin/help/users')
+        ->and(ArticlePath::helpCenterHref())->toBe('http://localhost/admin/help');
+});
+
 it('resolves links from a section render slug against its folder', function (): void {
     expect(ArticlePath::resolve('users/index', 'roles.md'))
         ->toBe(['slug' => 'users/roles', 'fragment' => ''])

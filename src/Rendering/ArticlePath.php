@@ -123,12 +123,30 @@ final class ArticlePath
      * or without the leading #; it lands as one #id so a field hint's help
      * center fallback (Phase 4 in fin-codex) and the renderer's own article
      * links build the same URL.
+     *
+     * On a null prefix the result is root-relative "/{slug}", a dead link
+     * unless the host sets a prefix at runtime — fin-codex does, per panel,
+     * with a plain config write at panel boot, after the routes have run.
      */
     public static function href(string $slug, ?string $fragment = null): string
     {
-        $prefix = (string) config('lin-codex.routes.help_center', '/help');
+        $prefix = (string) config('lin-codex.routes.help_center');
         $id = ltrim((string) $fragment, '#');
 
         return rtrim($prefix, '/').'/'.$slug.($id === '' ? '' : '#'.$id);
+    }
+
+    /**
+     * The help center root as an absolute URL, or null when the public help
+     * center is switched off (lin-codex.routes.help_center is null). Built
+     * from the prefix, never from the route name, so a prefix a host sets at
+     * runtime after the routes were registered is followed too. The drawer
+     * footer and the help button read this; fin-codex reads it as well.
+     */
+    public static function helpCenterHref(): ?string
+    {
+        $prefix = config('lin-codex.routes.help_center');
+
+        return is_string($prefix) ? url(rtrim($prefix, '/')) : null;
     }
 }

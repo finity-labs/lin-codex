@@ -154,8 +154,17 @@ return [
     | The URL prefix article-to-article links resolve under: "[Roles](roles.md)"
     | in the article "users/intro" becomes "/help/users/roles". The link also
     | carries a "data-codex-article" attribute so the help drawer can open it
-    | in place; the href works without JavaScript. The help center is mounted
-    | at the same prefix. A full URL is accepted as well.
+    | in place; the href works without JavaScript.
+    |
+    | "help_center" is the prefix the public help center is mounted at and
+    | article links are built under. A full URL is accepted as well. null
+    | switches the public page off: neither /help route is registered and a
+    | request there answers 404, while the drawer, the help button, and the
+    | media, API and stylesheet routes carry on. The drawer footer then has
+    | no "Open help center" link and the button's anchor goes nowhere, and
+    | article links become root-relative "/{slug}" unless the host sets a
+    | prefix at runtime (fin-codex does, per panel). "" is refused at boot,
+    | because it would mount the page at the site root.
     |
     | "media" is the prefix relative images in file articles are served
     | under ("{media}/{locale}/{path}"). Only image extensions are served

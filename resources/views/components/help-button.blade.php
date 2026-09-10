@@ -1,5 +1,5 @@
-{{-- Rendered by View\Components\HelpButton. Package classes come first so a host class merges after them. $badgeValue is the resolved count (the badgeCount() method itself is also exposed to the view as a closure, so the value travels under its own name). --}}
-<a href="{{ route('lin-codex.help-center') }}"
+{{-- Rendered by View\Components\HelpButton. Package classes come first so a host class merges after them. $badgeValue is the resolved count (the badgeCount() method itself is also exposed to the view as a closure, so the value travels under its own name). $helpCenterUrl is the help center root, or "#" when the public page is off. --}}
+<a href="{{ $helpCenterUrl }}"
    {{ $attributes->class(['codex-help-button', 'codex-help-button--labelled' => $label !== null, 'codex-help-button--floating' => $floating]) }}
    data-codex-help-button
    x-data

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FinityLabs\LinCodex\View\Components;
 
+use FinityLabs\LinCodex\Rendering\ArticlePath;
 use FinityLabs\LinCodex\View\PageHelpResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
@@ -13,7 +14,8 @@ use Illuminate\View\Component;
  *
  * The button owns no state. It dispatches the "codex:open" window event on
  * click and the drawer does the rest; without JavaScript the anchor simply
- * navigates to the help center. The badge shows how many articles the
+ * navigates to the help center, or, when the public help center is switched
+ * off, does nothing. The badge shows how many articles the
  * current page has, taken from the same request-scoped PageHelpResolver
  * the drawer's mount() reads, so the count is server-rendered, visible
  * without JavaScript and always equal to the drawer's page list. A host
@@ -47,6 +49,9 @@ final class HelpButton extends Component
 
     public function render(): View
     {
-        return view('lin-codex::components.help-button', ['badgeValue' => $this->badgeCount()]);
+        return view('lin-codex::components.help-button', [
+            'badgeValue' => $this->badgeCount(),
+            'helpCenterUrl' => ArticlePath::helpCenterHref() ?? '#',
+        ]);
     }
 }

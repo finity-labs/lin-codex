@@ -82,7 +82,9 @@
             @endswitch
         </div>
         <footer class="codex-drawer__footer">
-            <a class="codex-drawer__help-center" href="{{ $helpCenterUrl }}">{{ __('lin-codex::lin-codex.ui.open_help_center') }}</a>
+            @if ($helpCenterUrl !== null)
+                <a class="codex-drawer__help-center" href="{{ $helpCenterUrl }}">{{ __('lin-codex::lin-codex.ui.open_help_center') }}</a>
+            @endif
             @if ($options['shortcut'] !== null)
                 <span class="codex-drawer__shortcut">{{ __('lin-codex::lin-codex.ui.shortcut_hint', ['shortcut' => $options['shortcut']]) }}</span>
             @endif

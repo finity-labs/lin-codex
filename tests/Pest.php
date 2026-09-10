@@ -5,6 +5,7 @@ declare(strict_types=1);
 use FinityLabs\LinCodex\Tests\CustomApiPrefixTestCase;
 use FinityLabs\LinCodex\Tests\CustomHelpCenterTestCase;
 use FinityLabs\LinCodex\Tests\CustomTableNamesTestCase;
+use FinityLabs\LinCodex\Tests\NullHelpCenterTestCase;
 use FinityLabs\LinCodex\Tests\TestCase;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Testing\TestView;
@@ -13,6 +14,7 @@ uses(TestCase::class)->in('Unit', 'Feature/Migrations', 'Feature/Models', 'Featu
 uses(CustomTableNamesTestCase::class)->in('Feature/CustomTableNames');
 uses(CustomApiPrefixTestCase::class)->in('Feature/CustomApiPrefix');
 uses(CustomHelpCenterTestCase::class)->in('Feature/CustomHelpCenter');
+uses(NullHelpCenterTestCase::class)->in('Feature/NullHelpCenter');
 
 /**
  * Walk a value recursively and fail on any Eloquent model, any closure or

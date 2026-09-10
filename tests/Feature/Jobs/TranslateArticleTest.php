@@ -16,6 +16,7 @@ use FinityLabs\LinCodex\Settings\CodexSettings;
 use FinityLabs\LinCodex\Tests\Fixtures\FakeAiClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
 
 /**
@@ -264,4 +265,39 @@ it('serializes without a model', function (): void {
         ->and($job->locales)->toBe(['de'])
         ->and($job->userId)->toBe($this->userId)
         ->and($job->timeout)->toBe(150);
+});
+
+it('reports a throwable the translator raises before recording the failure', function (): void {
+    Event::fake([ArticleTranslated::class]);
+    Exceptions::fake();
+    $fake = linCodexJobsBind(linCodexJobsFake());
+
+    $blank = Article::factory()->withTranslation('en', [
+        'title' => '',
+        'excerpt' => null,
+        'body' => '',
+    ])->create();
+
+    dispatch_sync(new TranslateArticle($blank->id, ['de'], $this->userId));
+
+    Exceptions::assertReported(fn (LogicException $e): bool => str_contains($e->getMessage(), 'nothing to translate'));
+    Exceptions::assertReportedCount(1);
+
+    Event::assertDispatched(ArticleTranslated::class, fn (ArticleTranslated $e): bool => $e->report->failedLocales() === ['de' => AiReason::UNKNOWN]);
+
+    expect($fake->requests)->toBe([])
+        ->and(ArticleTranslation::query()->where('article_id', $blank->id)->where('locale', 'de')->exists())->toBeFalse();
+});
+
+it('reports an unknown AI failure once, never twice', function (): void {
+    Event::fake([ArticleTranslated::class]);
+    Exceptions::fake();
+    linCodexJobsBind((new FakeAiClient)->push(new RuntimeException('boom')));
+
+    dispatch_sync(new TranslateArticle($this->article->id, ['de'], $this->userId));
+
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'boom');
+    Exceptions::assertReportedCount(1);
+
+    Event::assertDispatched(ArticleTranslated::class, fn (ArticleTranslated $e): bool => $e->report->failedLocales() === ['de' => AiReason::UNKNOWN]);
 });

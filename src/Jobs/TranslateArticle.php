@@ -125,8 +125,20 @@ final class TranslateArticle implements ShouldQueue
 
             try {
                 $result = $translator->translate($article, $locale);
-            } catch (Throwable) {
-                // A caller error the translator throws for: nothing to translate.
+            } catch (Throwable $e) {
+                /*
+                 * The translator's own caller guards land here - an article
+                 * with nothing to translate, a locale asked for its own
+                 * source - and so does anything the source-row read raises.
+                 * A queued job has no caller to show a message to, so the
+                 * throwable goes to the host's error tooling before the
+                 * locale is written off as unknown. An AI failure never
+                 * reaches this catch: the translator reports the unknown
+                 * ones itself and hands back a failed result, so nothing is
+                 * reported twice.
+                 */
+                report($e);
+
                 $report->failed($locale, AiReason::UNKNOWN);
 
                 continue;

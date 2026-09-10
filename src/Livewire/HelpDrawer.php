@@ -10,6 +10,7 @@ use FinityLabs\LinCodex\Livewire\Concerns\SearchesArticles;
 use FinityLabs\LinCodex\Reading\ArticleReader;
 use FinityLabs\LinCodex\Reading\ReadArticle;
 use FinityLabs\LinCodex\Reading\TreeBuilder;
+use FinityLabs\LinCodex\Rendering\ArticlePath;
 use FinityLabs\LinCodex\Search\SearchResult;
 use FinityLabs\LinCodex\View\PageHelpResolver;
 use Illuminate\Contracts\View\View;
@@ -224,10 +225,11 @@ class HelpDrawer extends Component
      * per render: the article, its fallback notice and the "also on this
      * page" list in the article view, the search result in the search view,
      * the tree in the tree view (and on a page with no articles), the title
-     * of the current view, the Alpine options and the help-center URL. A host
-     * view that replaces the core's (fin-codex) reads the same array.
+     * of the current view, the Alpine options and the help-center URL, or
+     * null when the public help center is switched off. A host view that
+     * replaces the core's (fin-codex) reads the same array.
      *
-     * @return array{read: ?ReadArticle, fallbackNotice: ?string, also: list<array{slug: string, title: string, excerpt: ?string, isFallback: bool}>, result: ?SearchResult, nodes: list<TreeNode>, title: string, options: array{shortcut: ?string, width: ?int}, width: ?int, helpCenterUrl: string}
+     * @return array{read: ?ReadArticle, fallbackNotice: ?string, also: list<array{slug: string, title: string, excerpt: ?string, isFallback: bool}>, result: ?SearchResult, nodes: list<TreeNode>, title: string, options: array{shortcut: ?string, width: ?int}, width: ?int, helpCenterUrl: ?string}
      */
     protected function viewData(): array
     {
@@ -266,7 +268,7 @@ class HelpDrawer extends Component
             'title' => (string) $title,
             'options' => ['shortcut' => $this->shortcut, 'width' => $this->width],
             'width' => $this->width,
-            'helpCenterUrl' => route('lin-codex.help-center'),
+            'helpCenterUrl' => ArticlePath::helpCenterHref(),
         ];
     }
 

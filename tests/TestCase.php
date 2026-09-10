@@ -17,6 +17,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Livewire\Features\SupportDisablingBackButtonCache\SupportDisablingBackButtonCache;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Spatie\LaravelSettings\LaravelSettingsServiceProvider;
@@ -82,6 +83,27 @@ class TestCase extends Orchestra
     {
         $app['config']->set('database.default', 'testing');
         $app['config']->set('database.connections.testing', self::databaseConnectionConfig());
+
+        $this->forgetLivewireBackButtonCacheFlag();
+    }
+
+    /**
+     * Livewire marks "the next response must not be cached" on a public static
+     * property and stamps it on the response from global middleware. A
+     * component that redirects sets the flag; a Livewire::test() call never
+     * sends its response through the HTTP kernel, so the flag survives into the
+     * next request the process makes and brands whatever response comes next
+     * with no-store. Across a random test order that victim is arbitrary — it
+     * cost us a red CI run on the stylesheet route's cache headers.
+     *
+     * Clearing it as each application boots keeps one test's redirect out of
+     * the next test's response headers.
+     */
+    private function forgetLivewireBackButtonCacheFlag(): void
+    {
+        if (class_exists(SupportDisablingBackButtonCache::class)) {
+            SupportDisablingBackButtonCache::$disableBackButtonCache = false;
+        }
     }
 
     /**

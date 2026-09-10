@@ -57,7 +57,7 @@ Create your first article and open the drawer with `Ctrl+/`:
 php artisan codex:make getting-started --title="Getting started"
 ```
 
-Articles live in `resources/codex/{locale}/`. The help center page is at `/help`.
+Articles live in `resources/codex/{locale}/`. The help center page is at `/help`. Set `lin-codex.routes.help_center` to `null` to switch the page off.
 
 ## Writing articles
 
@@ -119,7 +119,7 @@ An image on its own line becomes a figure. The title, if given, is the caption. 
 
 ### Links
 
-Link to another article with its relative file path, optionally with a section. The path is resolved against the current article's slug, `.md` is dropped, and the href is built under `lin-codex.routes.help_center` (`/help` by default). Links to other hosts open in a new tab.
+Link to another article with its relative file path, optionally with a section. The path is resolved against the current article's slug, `.md` is dropped, and the href is built under `lin-codex.routes.help_center` (`/help` by default, or root-relative when the page is switched off and no prefix is set at runtime). Links to other hosts open in a new tab.
 
 ```markdown
 See [Roles](roles.md) and [Invoices](../billing/invoices.md#totals).
@@ -683,6 +683,8 @@ Escape and a click on the overlay close it. Focus moves to the search box on ope
 ### Help center
 
 `/help` lists the topics and `/help/{slug}` shows an article. The routes are named `lin-codex.help-center` and `lin-codex.help-center.article` and run on the `routes.middleware` group. Three columns: the tree with the search box on the left, the article with its breadcrumbs in the middle, "On this page" on the right; a query replaces the article column with up to 50 hits. Set `lin-codex.routes.help_center` to move it; the article links the renderer writes follow.
+
+`null` switches the public page off: neither route is registered, `/help` is a plain 404, and the drawer, the help button and the media, API and stylesheet routes all keep working. The drawer footer then renders without its help-center link and the button's anchor goes nowhere — it still opens the drawer — and `ArticlePath::helpCenterHref()` answers null. A prefix that would mount the page at the site root (`""` or `"/"`) is refused when the routes load rather than silently taken. The `lin-codex.help-center` Livewire component and the layout key below keep working either way, so you can mount the page on a route of your own.
 
 `lin-codex.routes.help_center_layout` renders the page into a host layout instead of the package one. It must be a component layout that echoes `$slot` (Livewire wraps it as an anonymous component; an `@extends` layout does not work). The layout receives `$title` and adds `<x-lin-codex::styles />` itself.
 
