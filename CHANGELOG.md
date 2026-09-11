@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-09-11
+
+### Fixed
+
+- The UUID user-model test added in 0.4.1 asserted SQLite's column type name, so the MySQL and PostgreSQL CI rows failed on `char` and `uuid`. It reads the name the driver in use reports. Test-only; nothing in the package changed
+
 ## [0.4.1] - 2026-09-11
 
 ### Fixed

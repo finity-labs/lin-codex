@@ -38,10 +38,19 @@ class UuidUserKeyTest extends UuidUserTestCase
 
     public function test_the_migrations_create_string_user_columns_for_a_uuid_user_model(): void
     {
-        $this->assertSame('varchar', Schema::getColumnType('codex_articles', 'created_by'));
-        $this->assertSame('varchar', Schema::getColumnType('codex_articles', 'updated_by'));
-        $this->assertSame('varchar', Schema::getColumnType('codex_article_revisions', 'user_id'));
-        $this->assertSame('varchar', Schema::getColumnType('codex_media', 'uploaded_by'));
+        // The name a driver gives its uuid column, never an integer type:
+        // Postgres has one of its own, MySQL and MariaDB store char(36) and
+        // SQLite reports the varchar it was declared as.
+        $expected = match ($this->databaseDriver()) {
+            'pgsql' => 'uuid',
+            'mysql', 'mariadb' => 'char',
+            default => 'varchar',
+        };
+
+        $this->assertSame($expected, Schema::getColumnType('codex_articles', 'created_by'));
+        $this->assertSame($expected, Schema::getColumnType('codex_articles', 'updated_by'));
+        $this->assertSame($expected, Schema::getColumnType('codex_article_revisions', 'user_id'));
+        $this->assertSame($expected, Schema::getColumnType('codex_media', 'uploaded_by'));
     }
 
     public function test_an_article_stores_the_uuid_author_and_reads_it_back_through_the_relationships(): void
