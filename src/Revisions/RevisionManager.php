@@ -44,7 +44,7 @@ use Spatie\LaravelSettings\Exceptions\MissingSettings;
  */
 final class RevisionManager
 {
-    /** @var list<array{reason: RevisionReason, userId: ?int, suppressed: bool}> */
+    /** @var list<array{reason: RevisionReason, userId: int|string|null, suppressed: bool}> */
     private array $stack = [];
 
     public function __construct(private readonly ViewerResolver $viewers) {}
@@ -81,7 +81,7 @@ final class RevisionManager
      * viewer). Returns whatever $work returns; the scope is popped even
      * when $work throws.
      */
-    public function attributing(RevisionReason $reason, ?int $userId, Closure $work): mixed
+    public function attributing(RevisionReason $reason, int|string|null $userId, Closure $work): mixed
     {
         $this->stack[] = ['reason' => $reason, 'userId' => $userId, 'suppressed' => false];
 
@@ -114,7 +114,7 @@ final class RevisionManager
      *
      * @throws LogicException for a translation that has not been saved yet
      */
-    public function snapshot(ArticleTranslation $translation, RevisionReason $reason, ?int $userId): ArticleRevision
+    public function snapshot(ArticleTranslation $translation, RevisionReason $reason, int|string|null $userId): ArticleRevision
     {
         if (! $translation->exists) {
             throw new LogicException('Only a saved translation can be snapshotted.');
@@ -148,7 +148,7 @@ final class RevisionManager
      * with nothing to snapshot. The translation save re-indexes search_text
      * through the model's own hook.
      */
-    public function restore(ArticleRevision $revision, ?int $userId): ArticleTranslation
+    public function restore(ArticleRevision $revision, int|string|null $userId): ArticleTranslation
     {
         $article = $revision->article;
         $translation = ArticleTranslation::query()->firstOrNew(['article_id' => $revision->article_id, 'locale' => $revision->locale]);
@@ -247,7 +247,7 @@ final class RevisionManager
      * The innermost scope, or the default outside any scope: Manual,
      * authored by the authenticated viewer when there is one.
      *
-     * @return array{reason: RevisionReason, userId: ?int, suppressed: bool}
+     * @return array{reason: RevisionReason, userId: int|string|null, suppressed: bool}
      */
     private function current(): array
     {
@@ -269,13 +269,18 @@ final class RevisionManager
 
     /**
      * The authenticated viewer's id, null for a guest and in console, where
-     * no guard has a user.
+     * no guard has a user. A host on HasUuids or HasUlids hands back its
+     * string key, which the column is sized for and which is stored as it is.
      */
-    private function defaultUserId(): ?int
+    private function defaultUserId(): int|string|null
     {
         $id = $this->viewers->resolve()->user?->getAuthIdentifier();
 
-        return is_numeric($id) ? (int) $id : null;
+        if (is_int($id)) {
+            return $id;
+        }
+
+        return is_string($id) && $id !== '' ? $id : null;
     }
 
     private function store(
@@ -285,7 +290,7 @@ final class RevisionManager
         string $body,
         ArticleFormat $format,
         RevisionReason $reason,
-        ?int $userId,
+        int|string|null $userId,
     ): ArticleRevision {
         return ArticleRevision::query()->create([
             'article_id' => $article->id,

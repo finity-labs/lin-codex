@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-11
+
+### Fixed
+
+- Apps whose user model uses a string primary key (`HasUuids`, `HasUlids`) recorded no author at all. `codex_articles.created_by`, `codex_articles.updated_by`, `codex_article_revisions.user_id` and `codex_media.uploaded_by` were unsigned big integers with a foreign key to a literal users table, so the key could not be stored, and `RevisionManager` narrowed the authenticated viewer's id to `?int` on the way in, so it was already null by then. All four migrations now build the column with `foreignIdFor()` on the configured auth user model, so it comes out as a bigint, ULID or UUID to match; `lin-codex.users_table` still names the constrained table and falls back to that model's own table. Existing installs on a string-keyed user model need to alter the four columns by hand, see the README's Upgrading section
+- `codex:import --user` refused anything but a whole number, so a UUID or ULID could not be given at all. Both it and `codex:revisions:restore --user` now take a digit string as an int, as before, or any other non-empty string as it is; an id that belongs to nobody still lands under `Failed` through the foreign key
+
+### Changed
+
+- The author id is typed `int|string|null` where it was `?int`: `Sync\ImportOptions::$userId`, `Revisions\RevisionManager::attributing()`, `snapshot()` and `restore()`, `Jobs\TranslateArticle::$userId` and `Events\ArticleTranslated::$userId`. Host code that passes `?int` keeps working; code that reads `ArticleTranslated::$userId` has to handle a string
+
 ## [0.4.0] - 2026-09-10
 
 ### Changed

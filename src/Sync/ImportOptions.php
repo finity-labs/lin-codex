@@ -20,6 +20,6 @@ final readonly class ImportOptions
         public ?string $locale = null,
         public bool $force = false,
         public bool $dryRun = false,
-        public ?int $userId = null,
+        public int|string|null $userId = null,
     ) {}
 }

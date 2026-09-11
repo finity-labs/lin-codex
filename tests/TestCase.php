@@ -199,7 +199,7 @@ class TestCase extends Orchestra
 
     /**
      * The schema currently live on a persistent server: its signature
-     * (driver, table names, users table) and the tables it owns. Exactly one
+     * (driver, user model, table names, users table) and the tables it owns. Exactly one
      * signature is live at a time, so a custom-table-names test never sees
      * the default tables and vice versa. Never consulted for SQLite, whose
      * in-memory database is new for every test.
@@ -384,9 +384,16 @@ class TestCase extends Orchestra
         ];
     }
 
+    /**
+     * The user model is part of the signature: the package's user columns are
+     * sized from it, so a UUID-keyed run needs its own schema rather than the
+     * integer one a previous test left live.
+     */
     private function schemaSignature(): string
     {
-        return $this->databaseDriver().'|'.implode(',', $this->packageTables());
+        $userModel = (string) config('auth.providers.users.model');
+
+        return $this->databaseDriver().'|'.$userModel.'|'.implode(',', $this->packageTables());
     }
 
     private function usersTable(): string

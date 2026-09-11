@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
  * @property string $body
  * @property ArticleFormat $format
  * @property RevisionReason $reason
- * @property int|null $user_id
+ * @property int|string|null $user_id
  * @property Carbon|null $created_at
  * @property-read Article $article
  * @property-read Model|null $user

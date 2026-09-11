@@ -78,12 +78,12 @@ final class TranslateArticle implements ShouldQueue
 
     /**
      * @param  list<string>  $locales  target locale codes, in the order they are worked through
-     * @param  int|null  $userId  the admin who queued the run; the author of every revision it records
+     * @param  int|string|null  $userId  the admin who queued the run; the author of every revision it records
      */
     public function __construct(
         public readonly int $articleId,
         public readonly array $locales,
-        public readonly ?int $userId = null,
+        public readonly int|string|null $userId = null,
     ) {
         $queue = config('lin-codex.ai.queue');
 

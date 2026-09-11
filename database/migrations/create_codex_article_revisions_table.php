@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,9 +14,11 @@ return new class extends Migration
         $schema = Schema::connection($this->getConnection());
         $articles = config('lin-codex.table_names.articles') ?? 'codex_articles';
         $revisions = config('lin-codex.table_names.article_revisions') ?? 'codex_article_revisions';
-        $users = config('lin-codex.users_table') ?? 'users';
+        /** @var class-string<Model> $userModel */
+        $userModel = config('auth.providers.users.model');
+        $users = config('lin-codex.users_table') ?? (new $userModel)->getTable();
 
-        $schema->create($revisions, function (Blueprint $table) use ($articles, $users): void {
+        $schema->create($revisions, function (Blueprint $table) use ($articles, $userModel, $users): void {
             $table->id();
             $table->foreignId('article_id')->constrained($articles)->cascadeOnDelete();
             $table->string('locale', 10);
@@ -23,7 +26,7 @@ return new class extends Migration
             $table->longText('body');
             $table->unsignedTinyInteger('format');
             $table->unsignedTinyInteger('reason');
-            $table->foreignId('user_id')->nullable()->constrained($users)->nullOnDelete();
+            $table->foreignIdFor($userModel, 'user_id')->nullable()->constrained($users)->nullOnDelete();
             $table->timestamp('created_at')->nullable();
 
             $table->index(['article_id', 'created_at']);

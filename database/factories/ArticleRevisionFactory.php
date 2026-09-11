@@ -51,7 +51,7 @@ class ArticleRevisionFactory extends Factory
         return $this->state(fn (): array => ['reason' => RevisionReason::Restore]);
     }
 
-    public function byUser(int $userId): static
+    public function byUser(int|string $userId): static
     {
         return $this->state(fn (): array => ['user_id' => $userId]);
     }

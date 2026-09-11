@@ -814,7 +814,7 @@ codex:import [--only=SLUG]... [--locale=XX] [--force] [--dry-run] [--user=ID]
 | `--locale=xx` | Import one language only. |
 | `--force` | Overwrite articles that already exist in the database. |
 | `--dry-run` | Print the summary without writing. |
-| `--user=id` | Record this user id as the author of the articles and of the revisions. |
+| `--user=id` | Record this user id as the author of the articles and of the revisions. A whole number, or the UUID or ULID string your user model is keyed by. |
 
 Reads every folder in `lin-codex.sources.filesystem.paths` through the file source, whatever `lin-codex.source` is set to, and writes the articles into the database through the models, so parent links, `search_text` and revisions come from the same hooks an editor's save goes through. An article whose slug already exists in the database is skipped and listed: a re-import never silently destroys an admin's edits. `--force` overwrites it and, when revisions are on, records an `import` revision for each translation whose title or body changed; an unchanged translation records nothing. Each article is written in its own transaction, so one failure (an unknown `--user`, a constraint) lands under `Failed` for its languages and the run carries on with the next slug. The article's `source_path` is stored relative to its docs folder (`en/02-users/index.md`), which is how `codex:export` finds the file again.
 
@@ -968,7 +968,36 @@ Removes every article's revisions beyond the keep count, language by language, n
 codex:revisions:restore {revision} [--user=ID]
 ```
 
-Restores a revision by id after snapshotting the current content, so the restore can itself be undone; `--user` records the author of that snapshot, which a console run otherwise leaves empty. See [Revisions](#revisions).
+Restores a revision by id after snapshotting the current content, so the restore can itself be undone; `--user` records the author of that snapshot, which a console run otherwise leaves empty. It takes a whole number, or the UUID or ULID string your user model is keyed by. See [Revisions](#revisions).
+
+## Upgrading
+
+### UUID or ULID user models
+
+Since 0.4.1 the migrations size `codex_articles.created_by`, `codex_articles.updated_by`, `codex_article_revisions.user_id` and `codex_media.uploaded_by` from your auth user model, so a fresh install on a `HasUuids` or `HasUlids` user works out of the box. An install that ran the earlier migrations on such a model has integer columns that cannot hold the key, and every author was recorded as nobody. Migrate them once:
+
+```php
+Schema::table('codex_articles', function (Blueprint $table) {
+    $table->dropConstrainedForeignId('created_by');
+    $table->dropConstrainedForeignId('updated_by');
+    $table->foreignIdFor(User::class, 'created_by')->nullable()->constrained()->nullOnDelete();
+    $table->foreignIdFor(User::class, 'updated_by')->nullable()->constrained()->nullOnDelete();
+});
+
+Schema::table('codex_article_revisions', function (Blueprint $table) {
+    $table->dropConstrainedForeignId('user_id');
+    $table->foreignIdFor(User::class, 'user_id')->nullable()->constrained()->nullOnDelete();
+});
+
+Schema::table('codex_media', function (Blueprint $table) {
+    $table->dropConstrainedForeignId('uploaded_by');
+    $table->foreignIdFor(User::class, 'uploaded_by')->nullable()->constrained()->nullOnDelete();
+});
+```
+
+Use your own table names if `lin-codex.table_names` overrides them. Installs on the default integer user model need nothing.
+
+`codex:import --user` and `codex:revisions:restore --user` take a UUID or ULID from 0.4.1 on; they used to insist on a whole number. Host code that passes an author id (`ImportOptions::$userId`, `RevisionManager::attributing()`, `snapshot()`, `restore()`, `Jobs\TranslateArticle`) now types it `int|string|null`, and `Events\ArticleTranslated::$userId` arrives the same way.
 
 ## License
 

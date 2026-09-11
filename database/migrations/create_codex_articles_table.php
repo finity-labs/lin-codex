@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use FinityLabs\LinCodex\Enums\ArticleFormat;
 use FinityLabs\LinCodex\Enums\Visibility;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,9 +15,11 @@ return new class extends Migration
     {
         $schema = Schema::connection($this->getConnection());
         $articles = config('lin-codex.table_names.articles') ?? 'codex_articles';
-        $users = config('lin-codex.users_table') ?? 'users';
+        /** @var class-string<Model> $userModel */
+        $userModel = config('auth.providers.users.model');
+        $users = config('lin-codex.users_table') ?? (new $userModel)->getTable();
 
-        $schema->create($articles, function (Blueprint $table) use ($articles, $users): void {
+        $schema->create($articles, function (Blueprint $table) use ($articles, $userModel, $users): void {
             $table->id();
             $table->string('slug', 191)->unique();
             $table->foreignId('parent_id')->nullable()->constrained($articles)->nullOnDelete();
@@ -31,8 +34,8 @@ return new class extends Migration
             // Text, not JSON: MySQL's JSON type reorders object keys (shortest first),
             // which breaks the lossless import/export round trip of author metadata.
             $table->longText('meta')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained($users)->nullOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained($users)->nullOnDelete();
+            $table->foreignIdFor($userModel, 'created_by')->nullable()->constrained($users)->nullOnDelete();
+            $table->foreignIdFor($userModel, 'updated_by')->nullable()->constrained($users)->nullOnDelete();
             $table->timestamps();
 
             $table->index(['parent_id', 'sort_order']);

@@ -26,7 +26,7 @@ final class ArticleTranslated
 
     public function __construct(
         public readonly int $articleId,
-        public readonly ?int $userId,
+        public readonly int|string|null $userId,
         public readonly TranslationReport $report,
     ) {}
 }

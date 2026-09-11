@@ -43,8 +43,8 @@ use Illuminate\Support\Str;
  * @property array<int, string>|null $keywords
  * @property array<int, string>|null $related
  * @property array<string, mixed>|null $meta
- * @property int|null $created_by
- * @property int|null $updated_by
+ * @property int|string|null $created_by
+ * @property int|string|null $updated_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, ArticleTranslation> $translations

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FinityLabs\LinCodex\Commands;
 
 use FinityLabs\LinCodex\Commands\Concerns\PrintsSyncSummary;
+use FinityLabs\LinCodex\Commands\Concerns\ResolvesUserOption;
 use FinityLabs\LinCodex\Sources\FilesystemSource;
 use FinityLabs\LinCodex\Sync\ArticleImporter;
 use FinityLabs\LinCodex\Sync\ImportOptions;
@@ -21,6 +22,7 @@ use Illuminate\Console\Command;
 final class ImportCommand extends Command
 {
     use PrintsSyncSummary;
+    use ResolvesUserOption;
 
     protected $signature = 'codex:import
         {--only=* : Import only these slugs}
@@ -33,14 +35,6 @@ final class ImportCommand extends Command
 
     public function handle(ArticleImporter $importer, FilesystemSource $files): int
     {
-        $user = $this->option('user');
-
-        if ($user !== null && ! ctype_digit($user)) {
-            $this->error('--user must be a whole number.');
-
-            return self::FAILURE;
-        }
-
         $locale = $this->option('locale');
         $dryRun = (bool) $this->option('dry-run');
 
@@ -52,7 +46,7 @@ final class ImportCommand extends Command
             locale: is_string($locale) && $locale !== '' ? $locale : null,
             force: (bool) $this->option('force'),
             dryRun: $dryRun,
-            userId: $user === null ? null : (int) $user,
+            userId: $this->userOption(),
         );
 
         $this->info('Importing articles from '.implode(', ', $files->paths()).'...');

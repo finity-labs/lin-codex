@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FinityLabs\LinCodex\Commands;
 
+use FinityLabs\LinCodex\Commands\Concerns\ResolvesUserOption;
 use FinityLabs\LinCodex\Models\ArticleRevision;
 use FinityLabs\LinCodex\Revisions\RevisionManager;
 use Illuminate\Console\Command;
@@ -17,6 +18,8 @@ use Illuminate\Database\QueryException;
  */
 final class RevisionsRestoreCommand extends Command
 {
+    use ResolvesUserOption;
+
     protected $signature = 'codex:revisions:restore
         {revision : The revision id}
         {--user= : Record this user id as the author of the snapshot taken before restoring}';
@@ -34,11 +37,8 @@ final class RevisionsRestoreCommand extends Command
             return self::FAILURE;
         }
 
-        $user = $this->option('user');
-        $userId = $user === null ? null : (int) $user;
-
         try {
-            $translation = $revisions->restore($revision, $userId);
+            $translation = $revisions->restore($revision, $this->userOption());
         } catch (QueryException $e) {
             $this->error($e->getMessage());
 

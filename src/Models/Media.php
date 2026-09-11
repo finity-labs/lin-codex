@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string $mime_type
  * @property int $size
- * @property int|null $uploaded_by
+ * @property int|string|null $uploaded_by
  * @property int|null $article_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
