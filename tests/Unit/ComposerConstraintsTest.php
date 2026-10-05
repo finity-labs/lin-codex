@@ -15,10 +15,10 @@ it('pins the locked runtime constraint for :dataset', function (string $package,
     expect(linCodexComposerJson()['require'][$package] ?? null)->toBe($constraint);
 })->with([
     'php' => ['php', '^8.2'],
-    'illuminate/contracts' => ['illuminate/contracts', '^11.0|^12.0|^13.0'],
+    'illuminate/contracts' => ['illuminate/contracts', '^11.28|^12.0|^13.0'],
     'league/commonmark' => ['league/commonmark', '^2.10'],
     'spatie/laravel-package-tools' => ['spatie/laravel-package-tools', '^1.92'],
-    'spatie/laravel-settings' => ['spatie/laravel-settings', '^3.7|^4.0'],
+    'spatie/laravel-settings' => ['spatie/laravel-settings', '^3.7.2|^4.0'],
     'symfony/html-sanitizer' => ['symfony/html-sanitizer', '^7.1|^8.0'],
     'symfony/yaml' => ['symfony/yaml', '^7.0|^8.0'],
 ]);
@@ -27,7 +27,7 @@ it('pins the locked dev constraint for :dataset', function (string $package, str
     expect(linCodexComposerJson()['require-dev'][$package] ?? null)->toBe($constraint);
 })->with([
     'larastan/larastan' => ['larastan/larastan', '^3.0'],
-    'orchestra/testbench' => ['orchestra/testbench', '^9.0|^10.0|^11.0'],
+    'orchestra/testbench' => ['orchestra/testbench', '^9.5|^10.0|^11.0'],
     'pestphp/pest' => ['pestphp/pest', '^3.0|^4.0'],
     'pestphp/pest-plugin-laravel' => ['pestphp/pest-plugin-laravel', '^3.0|^4.0'],
 ]);

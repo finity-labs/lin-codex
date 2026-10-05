@@ -55,15 +55,19 @@ it('clears every package cache and reports each line', function (): void {
 });
 
 it('says nothing cached when cold', function (): void {
-    $this->artisan('codex:cache-clear')
-        ->expectsOutputToContain('Rendered HTML')
-        ->expectsOutputToContain('File sources')
-        ->expectsOutputToContain('Search index')
-        ->expectsOutputToContain('Context index')
-        ->expectsOutputToContain('Stylesheet hash')
-        ->assertExitCode(0);
+    // Two plain calls rather than a PendingCommand followed by a call: on
+    // Laravel 11.28 the PendingCommand leaves its mocked OutputStyle bound,
+    // so the later call writes into the mock and Artisan::output() is empty.
+    expect(Artisan::call('codex:cache-clear'))->toBe(0);
 
-    expect(Cache::has(InMemoryIndex::CACHE_KEY))->toBeFalse()
+    $first = Artisan::output();
+
+    expect($first)->toContain('Rendered HTML')
+        ->toContain('File sources')
+        ->toContain('Search index')
+        ->toContain('Context index')
+        ->toContain('Stylesheet hash')
+        ->and(Cache::has(InMemoryIndex::CACHE_KEY))->toBeFalse()
         ->and(linCodexCacheClearCommandCachedKeys())->toBe([false])
         ->and(app(ArticleRenderer::class)->generation())->toBe(2);
 

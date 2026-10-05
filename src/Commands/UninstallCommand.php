@@ -109,6 +109,7 @@ class UninstallCommand extends Command
             ...File::glob(database_path('migrations/*_create_codex_*_table.php')),
             ...File::glob(database_path('settings/*_create_codex_settings.php')),
             ...File::glob(database_path('settings/*_create_codex_ai_settings.php')),
+            ...File::glob(database_path('settings/*_encrypt_codex_ai_api_key.php')),
         ];
 
         return array_values(array_filter($candidates, static fn (string $path): bool => File::exists($path)));

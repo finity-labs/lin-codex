@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-10-06
+
+### Fixed
+
+- Requires `spatie/laravel-settings` 3.7.2 or newer where 3.7.0 was enough. `Settings\CodexAiSettings` marks `api_key` with the `ShouldBeEncrypted` attribute, which that package only introduced in 3.7.2; on 3.7.0 and 3.7.1 the attribute was unknown, so a key saved through the settings class (the fin-codex AI settings page, `fin-codex:install --ai`) was written to `settings.payload` in plain text, while the row the settings migration seeds was encrypted. The new settings migration `encrypt_codex_ai_api_key` encrypts such a row in place and leaves an encrypted row byte for byte as it is, so publishing the migrations and migrating once is enough on every install; saving the key again does the same
+
+### Added
+
+- `Settings\CodexAiSettings::encrypted()` declares `api_key` encrypted by method as well as by attribute. spatie merges both lists and honours the method on every release of the package, so the key stays encrypted whatever version a host runs. The `ENCRYPTED` constant remains the single list behind both
+- The settings migration `encrypt_codex_ai_api_key`, published with the others and run by `codex:install`
+
+### Changed
+
+- Requires `illuminate/contracts` 11.28 or newer on the 11.x line where 11.0 was declared, and `orchestra/testbench` 9.5 in development. spatie/laravel-settings 3.7.2's service provider calls `ServiceProvider::optimizes()`, which Laravel only has from 11.27.1, so nothing older ever booted with the new settings floor. lin-codex now runs in the lowest-deps CI leg, which installs exactly these floors
+- The README recommends leaving `api_key` null in production and giving the SDK its key through `config/ai.php`, so the secret never reaches the database
+
 ## [0.4.3] - 2026-10-05
 
 ### Fixed

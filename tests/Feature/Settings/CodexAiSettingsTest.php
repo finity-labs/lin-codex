@@ -12,6 +12,23 @@ function linCodexAiSettingsMigration(): SettingsMigration
     return include dirname(__DIR__, 3).'/database/settings/create_codex_ai_settings.php';
 }
 
+function linCodexEncryptApiKeyMigration(): SettingsMigration
+{
+    return include dirname(__DIR__, 3).'/database/settings/encrypt_codex_ai_api_key.php';
+}
+
+function linCodexStoredApiKeyPayload(): mixed
+{
+    return DB::table('settings')->where('group', 'lin-codex-ai')->where('name', 'api_key')->value('payload');
+}
+
+function linCodexFreshAiSettings(): CodexAiSettings
+{
+    app()->forgetInstance(CodexAiSettings::class);
+
+    return app(CodexAiSettings::class);
+}
+
 it('resolves the seeded AI defaults immediately after migrating', function (): void {
     $settings = app(CodexAiSettings::class);
 
@@ -70,6 +87,48 @@ it('encrypts the API key at rest and decrypts it on read', function (): void {
     $cleared->save();
 
     expect(app(CodexAiSettings::class)->api_key)->toBeNull();
+});
+
+it('declares the API key encrypted by method as well as by attribute', function (): void {
+    expect(CodexAiSettings::encrypted())->toBe(['api_key'])
+        ->and(CodexAiSettings::ENCRYPTED)->toBe(['api_key']);
+});
+
+describe('encrypt_codex_ai_api_key migration', function (): void {
+    it('encrypts a key an earlier release wrote in plain text and keeps it readable', function (): void {
+        DB::table('settings')->where('group', 'lin-codex-ai')->where('name', 'api_key')->update(['payload' => json_encode('sk-legacy-plain')]);
+
+        linCodexEncryptApiKeyMigration()->up();
+
+        expect(linCodexStoredApiKeyPayload())->toBeString()
+            ->not->toContain('sk-legacy-plain')
+            ->and(linCodexFreshAiSettings()->api_key)->toBe('sk-legacy-plain');
+    });
+
+    it('leaves an encrypted key byte for byte as it is, so it is safe on every install and more than once', function (): void {
+        $settings = app(CodexAiSettings::class);
+        $settings->api_key = 'sk-already-encrypted';
+        $settings->save();
+
+        $before = linCodexStoredApiKeyPayload();
+
+        linCodexEncryptApiKeyMigration()->up();
+        linCodexEncryptApiKeyMigration()->up();
+
+        expect(linCodexStoredApiKeyPayload())->toBe($before)
+            ->and(linCodexFreshAiSettings()->api_key)->toBe('sk-already-encrypted');
+    });
+
+    it('leaves a null key alone and does nothing when the group was never seeded', function (): void {
+        linCodexEncryptApiKeyMigration()->up();
+
+        expect(linCodexFreshAiSettings()->api_key)->toBeNull();
+
+        linCodexAiSettingsMigration()->down();
+        linCodexEncryptApiKeyMigration()->up();
+
+        expect(DB::table('settings')->where('group', 'lin-codex-ai')->count())->toBe(0);
+    });
 });
 
 it('seeds the package default instructions naming the formal register', function (): void {

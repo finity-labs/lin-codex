@@ -15,6 +15,7 @@ use FinityLabs\LinCodex\Sources\DatabaseSource;
 use FinityLabs\LinCodex\Sources\FilesystemSource;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Foundation\Testing\Concerns\InteractsWithViews;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Features\SupportDisablingBackButtonCache\SupportDisablingBackButtonCache;
@@ -43,6 +44,13 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerInterface;
  */
 class TestCase extends Orchestra
 {
+    /**
+     * blade() and view() for the component tests. Testbench composes this
+     * trait itself from 9.6 on; at the 9.5 floor it does not, and using it
+     * here again is harmless on the versions that do.
+     */
+    use InteractsWithViews;
+
     /**
      * Package schema migrations in dependency order (articles first).
      * Reused by tests that need to run down() or re-run up().

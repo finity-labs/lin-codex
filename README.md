@@ -388,7 +388,7 @@ $settings->translation_instructions = DefaultInstructions::TEXT;    // the edita
 $settings->save();
 ```
 
-`api_key` is encrypted at rest through spatie's `#[ShouldBeEncrypted]`. Leave it null and the SDK's own credential from `config/ai.php` is used untouched, so a host that already configured `laravel/ai` doesn't store the key twice. `timeout` covers both paths a translation takes, the synchronous action in the panel and the queued job.
+`api_key` is encrypted at rest, declared through spatie's `#[ShouldBeEncrypted]` and through `encrypted()` both, so it stays encrypted whatever version of the settings package the host runs. Leave it null and the SDK's own credential from `config/ai.php` is used untouched. For production that is the setup to prefer: the secret then lives in the environment and never reaches the database, its backups or the settings cache. The stored key is the convenience for an admin who can't change the deployment. `timeout` covers both paths a translation takes, the synchronous action in the panel and the queued job.
 
 ### Providers and models
 
@@ -971,6 +971,17 @@ codex:revisions:restore {revision} [--user=ID]
 Restores a revision by id after snapshotting the current content, so the restore can itself be undone; `--user` records the author of that snapshot, which a console run otherwise leaves empty. It takes a whole number, or the UUID or ULID string your user model is keyed by. See [Revisions](#revisions).
 
 ## Upgrading
+
+### AI key saved on spatie/laravel-settings 3.7.0 or 3.7.1
+
+Since 0.4.4 the package requires spatie/laravel-settings 3.7.2, the first release that knows the `#[ShouldBeEncrypted]` attribute. A host that saved an AI key on 3.7.0 or 3.7.1 has it in `settings.payload` in plain text. Publishing the migrations and migrating once encrypts it in place:
+
+```bash
+php artisan vendor:publish --tag=lin-codex-migrations
+php artisan migrate
+```
+
+The `encrypt_codex_ai_api_key` migration leaves an encrypted row exactly as it is, so it is safe on every install. Saving the key again from the settings page has the same effect. Hosts that never ran those two versions need nothing.
 
 ### Caches on Laravel 13
 

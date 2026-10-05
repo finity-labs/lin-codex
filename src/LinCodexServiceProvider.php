@@ -49,6 +49,7 @@ class LinCodexServiceProvider extends PackageServiceProvider
                 'create_codex_media_table',
                 '../settings/create_codex_settings',
                 '../settings/create_codex_ai_settings',
+                '../settings/encrypt_codex_ai_api_key',
             ])
             ->hasConsoleCommands($this->commandClasses());
     }
