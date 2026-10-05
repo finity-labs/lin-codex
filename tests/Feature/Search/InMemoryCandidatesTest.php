@@ -204,8 +204,8 @@ describe('index cache', function (): void {
         $entry = Cache::get(InMemoryIndex::CACHE_KEY);
 
         foreach ($entry['documents'] as $position => $document) {
-            if ($document->slug === 'password-reset' && $document->locale === 'en') {
-                $entry['documents'][$position] = new IndexedDocument('password-reset', 'en', null, 'plantedword', '', '', '');
+            if ($document['slug'] === 'password-reset' && $document['locale'] === 'en') {
+                $entry['documents'][$position] = (new IndexedDocument('password-reset', 'en', null, 'plantedword', '', '', ''))->toArray();
             }
         }
 
@@ -220,6 +220,42 @@ describe('index cache', function (): void {
 
         expect(linCodexMemorySlugs(linCodexMemoryFind('reset', $this->guest))[0])->toBe('password-reset')
             ->and(Cache::get(InMemoryIndex::CACHE_KEY))->toBeArray();
+    });
+
+    it('stores the documents as plain data', function (): void {
+        linCodexMemoryFind('reset', $this->guest);
+
+        $entry = Cache::get(InMemoryIndex::CACHE_KEY);
+
+        linCodexAssertPlainData($entry);
+
+        expect($entry['documents'])->not->toBeEmpty()
+            ->and(array_keys($entry['documents'][0]))->toBe(['slug', 'locale', 'article_id', 'title', 'keywords', 'excerpt', 'body'])
+            ->and(IndexedDocument::fromArray($entry['documents'][0])->toArray())->toBe($entry['documents'][0]);
+    });
+
+    it('rebuilds over an entry whose documents are objects an earlier release wrote', function (): void {
+        linCodexMemoryFind('reset', $this->guest);
+
+        $entry = Cache::get(InMemoryIndex::CACHE_KEY);
+        $entry['documents'] = array_map(static fn (array $document): IndexedDocument => IndexedDocument::fromArray($document), $entry['documents']);
+
+        Cache::forever(InMemoryIndex::CACHE_KEY, $entry);
+
+        expect(linCodexMemorySlugs(linCodexMemoryFind('reset', $this->guest))[0])->toBe('password-reset');
+        linCodexAssertPlainData(Cache::get(InMemoryIndex::CACHE_KEY));
+    });
+
+    it('rebuilds over an entry with one malformed document rather than searching a partial index', function (): void {
+        linCodexMemoryFind('reset', $this->guest);
+
+        $entry = Cache::get(InMemoryIndex::CACHE_KEY);
+        $entry['documents'][0]['title'] = 42;
+
+        Cache::forever(InMemoryIndex::CACHE_KEY, $entry);
+
+        expect(linCodexMemorySlugs(linCodexMemoryFind('reset', $this->guest))[0])->toBe('password-reset')
+            ->and(Cache::get(InMemoryIndex::CACHE_KEY)['documents'][0]['title'])->toBeString();
     });
 
     it('hashes the documents with the folding version', function (): void {

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-10-05
+
+### Fixed
+
+- The render cache, the file source cache and the in-memory search index stored PHP objects. Laravel 13's `config/cache.php` ships `'serializable_classes' => false`, and every store that serializes (redis, file, database, memcached, dynamodb) then reads with `allowed_classes` off, so a cached object came back as `__PHP_Incomplete_Class`. `Rendering\ArticleRenderer::render()` threw a `TypeError` on every cache hit, which took the help drawer down the second time any article was opened; `Sources\FilesystemSource` never saw a cache hit and rescanned and rewrote its entry on every request; and `Search\InMemoryIndex` found no documents in its entry and answered every search over file articles with nothing. All three now store plain arrays and rehydrate on read. An entry of any other shape, the object entries earlier releases wrote included, is rebuilt and overwritten under the same key, so no cache clear and no generation bump is needed on upgrade. A regression test runs each cache through a store configured with `serializable_classes` off
+
+### Added
+
+- `Rendering\RenderedArticle`, `Sources\ArticleSet`, `Data\ArticleData`, `Data\ContextData`, `Data\TranslationData`, `Data\SourceWarning` and `Search\IndexedDocument` have `toArray()` and `fromArray()`; `fromArray()` throws an `InvalidArgumentException` on anything but the shape `toArray()` writes. `RenderedArticle` and `ArticleSet` also have `tryFromArray(mixed): ?self`, which answers a raw cache read with null instead. `Data\Shape` is the typed reader behind them
+
+### Changed
+
+- `lin-codex.render.cache.ttl` defaults to a week (`60 * 60 * 24 * 7`) where it was `null`. The key carries the content hash, so every edit leaves the previous render behind under its old key and a store with no TTL grows with the edit history; the config comment and the README say so. A published `config/lin-codex.php` keeps its own value; set `null` to keep entries forever as before
+
 ## [0.4.2] - 2026-09-11
 
 ### Fixed

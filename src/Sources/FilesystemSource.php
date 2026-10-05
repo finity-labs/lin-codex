@@ -29,6 +29,12 @@ use Illuminate\Support\Facades\Cache;
  * fingerprint changes. An edited, added or deleted file is therefore seen
  * on the next read with no manual cache clear.
  *
+ * The entry is ['fingerprint' => string, 'set' => ArticleSet::toArray()],
+ * arrays and scalars only, so it reads back under Laravel 13's default of
+ * cache.serializable_classes => false. An entry of any other shape (an
+ * object entry written by an earlier release, a poisoned entry) is a miss:
+ * the path is rescanned and the entry overwritten under the same key.
+ *
  * The cache key carries the scan version, the docs path, the default
  * locale (it decides which file supplies the shared metadata), the renderer
  * fingerprint (search text is derived through the renderer) and the media
@@ -186,17 +192,20 @@ final class FilesystemSource implements ContentSource
         }
 
         $cached = Cache::get($key);
+        $set = is_array($cached) && ($cached['fingerprint'] ?? null) === $live
+            ? ArticleSet::tryFromArray($cached['set'] ?? null)
+            : null;
 
-        if (is_array($cached) && ($cached['fingerprint'] ?? null) === $live && ($cached['set'] ?? null) instanceof ArticleSet) {
-            $this->memo[$key] = ['fingerprint' => $live, 'set' => $cached['set']];
+        if ($set !== null) {
+            $this->memo[$key] = ['fingerprint' => $live, 'set' => $set];
 
-            return $cached['set'];
+            return $set;
         }
 
         $scan = $this->scanner->scan($docsPath);
         $set = $this->assembler->assemble($scan['files'], $defaultLocale, $scan['warnings']);
 
-        Cache::forever($key, ['fingerprint' => $live, 'set' => $set]);
+        Cache::forever($key, ['fingerprint' => $live, 'set' => $set->toArray()]);
         $this->memo[$key] = ['fingerprint' => $live, 'set' => $set];
 
         return $set;

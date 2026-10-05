@@ -17,13 +17,21 @@ use Illuminate\Support\Facades\Cache;
  * hash, the format, the locale, the slug, the renderer fingerprint and the
  * render generation.
  *
- * Cache TTL semantics (lin-codex.render.cache.ttl): null keeps entries
- * forever, which is safe because the key changes whenever the body or the
- * renderer configuration changes, so an entry can only ever be orphaned,
- * never stale. An integer is a lifetime in seconds and acts as a memory
- * bound. Zero (or a negative number) bypasses the cache entirely and is
- * never passed to the store, because Laravel treats a non-positive TTL as a
- * delete.
+ * Cache TTL semantics (lin-codex.render.cache.ttl): an integer is a
+ * lifetime in seconds (the default is a week) and acts as a memory bound,
+ * because every edit leaves the previous render behind under its old key.
+ * null keeps entries forever, which is safe because the key changes
+ * whenever the body or the renderer configuration changes, so an entry can
+ * only ever be orphaned, never stale. Zero (or a negative number) bypasses
+ * the cache entirely and is never passed to the store, because Laravel
+ * treats a non-positive TTL as a delete.
+ *
+ * The store holds RenderedArticle::toArray(), never the object: Laravel
+ * 13's default of cache.serializable_classes => false makes every
+ * serializing store hand a PHP object back as __PHP_Incomplete_Class.
+ * A read that is not that array (a miss, an object entry written by an
+ * earlier release, a poisoned entry) renders again and overwrites the
+ * entry under the same key, so an upgrade needs no cache clear.
  *
  * The generation is an integer kept under GENERATION_KEY on the render
  * store (default 1 when absent). It is part of every cache key, so
@@ -52,11 +60,18 @@ final class ArticleRenderer
             return $this->renderUncached($body, $format, $locale, $slug);
         }
 
-        return $this->store()->remember(
-            $this->cacheKey($body, $format, $locale, $slug),
-            $ttl === null ? null : (int) $ttl,
-            fn (): RenderedArticle => $this->renderUncached($body, $format, $locale, $slug),
-        );
+        $store = $this->store();
+        $key = $this->cacheKey($body, $format, $locale, $slug);
+        $cached = RenderedArticle::tryFromArray($store->get($key));
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $rendered = $this->renderUncached($body, $format, $locale, $slug);
+        $store->put($key, $rendered->toArray(), $ttl === null ? null : (int) $ttl);
+
+        return $rendered;
     }
 
     public function renderUncached(string $body, ArticleFormat $format, string $locale, string $slug = ''): RenderedArticle

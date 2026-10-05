@@ -109,9 +109,13 @@ return [
     | cache key contains the content hash, the format, the locale, the slug
     | and a renderer fingerprint (this config, the app URL host and the
     | extension list), so an edit or a config change produces a new key on
-    | its own and nothing needs clearing. A TTL is therefore only a memory
-    | bound: null keeps entries forever, 0 disables caching, and an integer
-    | is a lifetime in seconds.
+    | its own and nothing needs clearing. The TTL is therefore only a memory
+    | bound, but one worth keeping: every edit leaves the previous render
+    | behind under its old key, so with no TTL the store grows with the
+    | edit history and never shrinks. An integer is a lifetime in seconds
+    | (the default is a week), null keeps entries forever, and 0 disables
+    | caching. Entries are plain arrays, never PHP objects, so they read
+    | back under Laravel 13's default of 'serializable_classes' => false.
     |
     | "limits" protect the Markdown parser against pathological input:
     | "max_nesting_level" caps nested blockquotes and lists,
@@ -127,7 +131,7 @@ return [
     'render' => [
         'cache' => [
             'store' => null,
-            'ttl' => null,
+            'ttl' => 60 * 60 * 24 * 7,
         ],
         'limits' => [
             'max_nesting_level' => 50,

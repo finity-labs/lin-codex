@@ -6,9 +6,11 @@ namespace FinityLabs\LinCodex\Sources;
 
 use FinityLabs\LinCodex\Data\ArticleData;
 use FinityLabs\LinCodex\Data\SearchDocument;
+use FinityLabs\LinCodex\Data\Shape;
 use FinityLabs\LinCodex\Data\SourceWarning;
 use FinityLabs\LinCodex\Data\TreeNode;
 use FinityLabs\LinCodex\Enums\ContextType;
+use InvalidArgumentException;
 
 /**
  * An immutable set of articles keyed by slug that answers the four content
@@ -19,6 +21,10 @@ use FinityLabs\LinCodex\Enums\ContextType;
  * Groups are folders that hold articles but have no article of their own;
  * they appear in the tree as nodes without an article and never shadow an
  * article with the same slug.
+ *
+ * The file source caches toArray(), never the set itself: a cache store on
+ * Laravel 13's defaults refuses to hand PHP objects back. fromArray() is the
+ * way back and tryFromArray() answers a raw cache read.
  */
 final readonly class ArticleSet
 {
@@ -72,6 +78,59 @@ final readonly class ArticleSet
             array_replace(...array_map(fn (self $set): array => $set->groups, $sets)),
             array_merge(...array_map(fn (self $set): array => $set->warnings, $sets)),
         );
+    }
+
+    /**
+     * The cacheable form: arrays and scalars only, every article and
+     * warning through its own toArray().
+     *
+     * @return array{articles: array<string, array<string, mixed>>, groups: array<string, string>, warnings: list<array<string, mixed>>}
+     */
+    public function toArray(): array
+    {
+        return [
+            'articles' => array_map(static fn (ArticleData $article): array => $article->toArray(), $this->articles),
+            'groups' => $this->groups,
+            'warnings' => array_map(static fn (SourceWarning $warning): array => $warning->toArray(), $this->warnings),
+        ];
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $data
+     *
+     * @throws InvalidArgumentException when $data is not the shape toArray() writes
+     */
+    public static function fromArray(array $data): self
+    {
+        $articles = [];
+
+        foreach (Shape::arrayMap($data, 'articles') as $slug => $article) {
+            $articles[$slug] = ArticleData::fromArray($article);
+        }
+
+        return new self(
+            $articles,
+            Shape::stringMap($data, 'groups'),
+            array_map(static fn (array $warning): SourceWarning => SourceWarning::fromArray($warning), Shape::arrayList($data, 'warnings')),
+        );
+    }
+
+    /**
+     * The set behind a raw cache read, or null when the value is anything
+     * else: a miss, an object entry written by an earlier release, a
+     * poisoned entry. The caller rescans and overwrites.
+     */
+    public static function tryFromArray(mixed $value): ?self
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        try {
+            return self::fromArray($value);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
     }
 
     /**

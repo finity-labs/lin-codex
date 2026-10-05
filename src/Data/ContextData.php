@@ -57,4 +57,34 @@ final readonly class ContextData
     {
         return ($this->panelId !== null ? $this->panelId.':' : '').$this->type->key().':'.$this->key;
     }
+
+    /**
+     * The cacheable form; the type travels as its backing value.
+     *
+     * @return array{type: int, key: string, panel_id: ?string, sort_order: int}
+     */
+    public function toArray(): array
+    {
+        return [
+            'type' => $this->type->value,
+            'key' => $this->key,
+            'panel_id' => $this->panelId,
+            'sort_order' => $this->sortOrder,
+        ];
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $data
+     *
+     * @throws InvalidArgumentException when $data is not the shape toArray() writes
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            Shape::enum($data, 'type', ContextType::class),
+            Shape::string($data, 'key'),
+            Shape::nullableString($data, 'panel_id'),
+            Shape::int($data, 'sort_order'),
+        );
+    }
 }

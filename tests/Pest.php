@@ -10,7 +10,7 @@ use FinityLabs\LinCodex\Tests\TestCase;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Testing\TestView;
 
-uses(TestCase::class)->in('Unit', 'Feature/Migrations', 'Feature/Models', 'Feature/Rendering', 'Feature/Http', 'Feature/Settings', 'Feature/Sources', 'Feature/Auth', 'Feature/Contexts', 'Feature/Locale', 'Feature/Reading', 'Feature/Search', 'Feature/Api', 'Feature/Stubs', 'Feature/Livewire', 'Feature/Views', 'Feature/Revisions', 'Feature/Commands', 'Feature/Coverage', 'Feature/Sync', 'Feature/Ai', 'Feature/Translation', 'Feature/Jobs');
+uses(TestCase::class)->in('Unit', 'Feature/Migrations', 'Feature/Models', 'Feature/Rendering', 'Feature/Http', 'Feature/Settings', 'Feature/Sources', 'Feature/Auth', 'Feature/Contexts', 'Feature/Locale', 'Feature/Reading', 'Feature/Search', 'Feature/Api', 'Feature/Stubs', 'Feature/Livewire', 'Feature/Views', 'Feature/Revisions', 'Feature/Commands', 'Feature/Coverage', 'Feature/Sync', 'Feature/Ai', 'Feature/Translation', 'Feature/Jobs', 'Feature/Cache');
 uses(CustomTableNamesTestCase::class)->in('Feature/CustomTableNames');
 uses(CustomApiPrefixTestCase::class)->in('Feature/CustomApiPrefix');
 uses(CustomHelpCenterTestCase::class)->in('Feature/CustomHelpCenter');
@@ -43,6 +43,24 @@ function linCodexAssertNoModels(mixed $value): void
     foreach ((new ReflectionObject($value))->getProperties() as $property) {
         linCodexAssertNoModels($property->getValue($value));
     }
+}
+
+/**
+ * Walk a value recursively and fail on any object at all: what a cache
+ * store is handed must be arrays and scalars only, so it reads back whole
+ * under Laravel 13's `cache.serializable_classes => false`.
+ */
+function linCodexAssertPlainData(mixed $value): void
+{
+    if (is_array($value)) {
+        foreach ($value as $item) {
+            linCodexAssertPlainData($item);
+        }
+
+        return;
+    }
+
+    expect(is_object($value))->toBeFalse('cache entry holds an object: '.(is_object($value) ? $value::class : gettype($value)));
 }
 
 /*

@@ -26,7 +26,7 @@ it('bumps the generation and orphans every cached render', function (): void {
 
     expect(Cache::has($first))->toBeTrue();
 
-    Cache::put($first, new RenderedArticle('<p>stale</p>', [], 'stale', []));
+    Cache::put($first, (new RenderedArticle('<p>stale</p>', [], 'stale', []))->toArray());
 
     expect($renderer->bumpGeneration())->toBe(2);
 

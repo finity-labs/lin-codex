@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FinityLabs\LinCodex\Data;
 
+use InvalidArgumentException;
+
 /**
  * One locale's title, excerpt and body for an article.
  *
@@ -17,6 +19,8 @@ namespace FinityLabs\LinCodex\Data;
  * database row's `updated_at`; null for file articles and whenever unknown.
  * It is a string, never a DateTime, so the object stays a plain readonly
  * value that `serialize()` and the no-model walk accept.
+ *
+ * The file source caches toArray(), never the object.
  */
 final readonly class TranslationData
 {
@@ -29,4 +33,38 @@ final readonly class TranslationData
         public ?string $sourcePath = null,
         public ?string $updatedAt = null,
     ) {}
+
+    /**
+     * @return array{locale: string, title: string, excerpt: ?string, body: string, search_text: ?string, source_path: ?string, updated_at: ?string}
+     */
+    public function toArray(): array
+    {
+        return [
+            'locale' => $this->locale,
+            'title' => $this->title,
+            'excerpt' => $this->excerpt,
+            'body' => $this->body,
+            'search_text' => $this->searchText,
+            'source_path' => $this->sourcePath,
+            'updated_at' => $this->updatedAt,
+        ];
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $data
+     *
+     * @throws InvalidArgumentException when $data is not the shape toArray() writes
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            Shape::string($data, 'locale'),
+            Shape::string($data, 'title'),
+            Shape::nullableString($data, 'excerpt'),
+            Shape::string($data, 'body'),
+            Shape::nullableString($data, 'search_text'),
+            Shape::nullableString($data, 'source_path'),
+            Shape::nullableString($data, 'updated_at'),
+        );
+    }
 }

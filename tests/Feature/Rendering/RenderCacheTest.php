@@ -30,7 +30,7 @@ describe('hits', function (): void {
         $renderer = app(ArticleRenderer::class);
         $renderer->render(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro');
 
-        Cache::put($renderer->cacheKey(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro'), new RenderedArticle('<p>cached</p>', [], 'cached', []));
+        Cache::put($renderer->cacheKey(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro'), (new RenderedArticle('<p>cached</p>', [], 'cached', []))->toArray());
 
         expect($renderer->render(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro')->html)->toBe('<p>cached</p>')
             ->and($renderer->plainText(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro'))->toBe('cached');
@@ -42,7 +42,7 @@ describe('misses', function (): void {
         $renderer = app(ArticleRenderer::class);
         $renderer->render(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro');
 
-        Cache::put($renderer->cacheKey(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro'), new RenderedArticle('<p>cached</p>', [], 'cached', []));
+        Cache::put($renderer->cacheKey(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro'), (new RenderedArticle('<p>cached</p>', [], 'cached', []))->toArray());
 
         $edited = $renderer->render(CACHED_MARKDOWN.'!', ArticleFormat::Markdown, 'en', 'intro');
 
@@ -121,7 +121,7 @@ describe('ttl and store', function (): void {
 
         $renderer = app(ArticleRenderer::class);
         $key = $renderer->cacheKey(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro');
-        Cache::forever($key, new RenderedArticle('<p>cached</p>', [], 'cached', []));
+        Cache::forever($key, (new RenderedArticle('<p>cached</p>', [], 'cached', []))->toArray());
 
         expect($renderer->render(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro')->html)->not->toBe('<p>cached</p>')
             ->and(Cache::has($key))->toBeTrue();
@@ -157,6 +157,48 @@ describe('ttl and store', function (): void {
 });
 
 describe('serialization', function (): void {
+    it('round-trips a rendered article through toArray() and fromArray()', function (): void {
+        $original = app(ArticleRenderer::class)->render(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'x');
+        $array = $original->toArray();
+
+        linCodexAssertPlainData($array);
+
+        expect(array_keys($array))->toBe(['html', 'toc', 'plain_text', 'metadata'])
+            ->and($array['toc'])->not->toBeEmpty()
+            ->and(RenderedArticle::fromArray($array))->toEqual($original)
+            ->and(RenderedArticle::tryFromArray($array))->toEqual($original)
+            ->and(RenderedArticle::tryFromArray(null))->toBeNull()
+            ->and(RenderedArticle::tryFromArray($original))->toBeNull()
+            ->and(RenderedArticle::tryFromArray(['html' => '<p>x</p>']))->toBeNull()
+            ->and(RenderedArticle::tryFromArray(['html' => '<p>x</p>', 'toc' => [['level' => '2', 'text' => 't', 'id' => 'i']], 'plain_text' => 'x', 'metadata' => []]))->toBeNull();
+    });
+
+    it('rejects an array of the wrong shape', function (): void {
+        RenderedArticle::fromArray(['html' => '<p>x</p>', 'toc' => [], 'plain_text' => 1, 'metadata' => []]);
+    })->throws(InvalidArgumentException::class, '"plain_text"');
+
+    it('stores the array form in the cache', function (): void {
+        $renderer = app(ArticleRenderer::class);
+        $rendered = $renderer->render(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro');
+        $stored = Cache::get($renderer->cacheKey(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro'));
+
+        linCodexAssertPlainData($stored);
+
+        expect($stored)->toBe($rendered->toArray());
+    });
+
+    it('re-renders over an object entry an earlier release wrote and overwrites it', function (): void {
+        $renderer = app(ArticleRenderer::class);
+        $key = $renderer->cacheKey(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro');
+
+        Cache::forever($key, new RenderedArticle('<p>legacy</p>', [], 'legacy', []));
+
+        $rendered = $renderer->render(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'intro');
+
+        expect($rendered->html)->toContain('id="reset-a-password"')
+            ->and(Cache::get($key))->toBe($rendered->toArray());
+    });
+
     it('round-trips a rendered article through serialize()', function (): void {
         $original = app(ArticleRenderer::class)->render(CACHED_MARKDOWN, ArticleFormat::Markdown, 'en', 'x');
 

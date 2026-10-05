@@ -111,7 +111,7 @@ it('serves a matching cache entry across instances and rescans on a fingerprint 
         translations: ['en' => new TranslationData('en', 'Planted', null, 'Planted body.', 'Planted body.')],
     );
 
-    Cache::forever($key, ['fingerprint' => PathFingerprint::of($this->tmp), 'set' => new ArticleSet(['planted' => $planted])]);
+    Cache::forever($key, ['fingerprint' => PathFingerprint::of($this->tmp), 'set' => (new ArticleSet(['planted' => $planted]))->toArray()]);
 
     $fresh = linCodexFreshFilesystemSource();
 
@@ -129,4 +129,37 @@ it('ignores a corrupt cache entry', function (): void {
     Cache::forever($this->source->cacheKey($this->tmp), 'garbage');
 
     expect(array_keys(linCodexFreshFilesystemSource()->all()))->toHaveCount(10);
+});
+
+it('stores the set as plain data and reads it back whole', function (): void {
+    $set = $this->source->set();
+    $cached = Cache::get($this->source->cacheKey($this->tmp));
+
+    linCodexAssertPlainData($cached);
+
+    expect($cached['fingerprint'])->toBe(PathFingerprint::of($this->tmp))
+        ->and($cached['set'])->toBe($set->toArray())
+        ->and(ArticleSet::fromArray($cached['set']))->toEqual($set)
+        ->and($set->warnings())->not->toBeEmpty()
+        ->and(ArticleSet::tryFromArray($cached['set'])?->all())->toEqual($set->all());
+});
+
+it('rescans over an object entry an earlier release wrote and overwrites it', function (): void {
+    $key = $this->source->cacheKey($this->tmp);
+
+    Cache::forever($key, ['fingerprint' => PathFingerprint::of($this->tmp), 'set' => new ArticleSet([])]);
+
+    $fresh = linCodexFreshFilesystemSource();
+
+    expect(array_keys($fresh->all()))->toHaveCount(10)
+        ->and(Cache::get($key)['set'])->toBe($fresh->set()->toArray());
+});
+
+it('rescans over an array entry of the wrong shape', function (): void {
+    $key = $this->source->cacheKey($this->tmp);
+
+    Cache::forever($key, ['fingerprint' => PathFingerprint::of($this->tmp), 'set' => ['articles' => ['x' => ['slug' => 'x']], 'groups' => [], 'warnings' => []]]);
+
+    expect(linCodexFreshFilesystemSource()->findBySlug('intro'))->not->toBeNull()
+        ->and(Cache::get($key)['set']['articles'])->toHaveKey('intro');
 });

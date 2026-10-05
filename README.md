@@ -149,7 +149,7 @@ $article->toc;        // [['level' => 2, 'text' => 'Reset a password', 'id' => '
 $article->plainText;  // search text
 ```
 
-Results are cached under a key built from the content hash, the format, the locale, the slug and a fingerprint of the renderer config, so an edit or a config change invalidates on its own; the store and TTL live under `lin-codex.render.cache`. Every class the renderer emits is prefixed `codex-`. The CSS for those classes is the prebuilt stylesheet (see [Help drawer](#help-drawer)).
+Results are cached under a key built from the content hash, the format, the locale, the slug and a fingerprint of the renderer config, so an edit or a config change invalidates on its own; the store and TTL live under `lin-codex.render.cache`. The TTL defaults to a week: every edit leaves the previous render behind under its old key, so without one the store grows with the edit history. Entries are plain arrays, so any store works under Laravel 13's `cache.serializable_classes` default. Every class the renderer emits is prefixed `codex-`. The CSS for those classes is the prebuilt stylesheet (see [Help drawer](#help-drawer)).
 
 ## Content sources
 
@@ -971,6 +971,10 @@ codex:revisions:restore {revision} [--user=ID]
 Restores a revision by id after snapshotting the current content, so the restore can itself be undone; `--user` records the author of that snapshot, which a console run otherwise leaves empty. It takes a whole number, or the UUID or ULID string your user model is keyed by. See [Revisions](#revisions).
 
 ## Upgrading
+
+### Caches on Laravel 13
+
+Since 0.4.3 the render cache, the file source cache and the in-memory search index store plain arrays instead of PHP objects. Laravel 13's `config/cache.php` ships `'serializable_classes' => false`, under which a cached object comes back as `__PHP_Incomplete_Class`: rendering an article a second time threw, and the file source and the search index never saw a cache hit. Nothing needs clearing on upgrade. An entry an earlier release wrote is replaced the first time it is read. `lin-codex.render.cache.ttl` now defaults to a week where it was `null`; a published config keeps whatever it says.
 
 ### UUID or ULID user models
 
