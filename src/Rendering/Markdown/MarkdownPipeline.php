@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FinityLabs\LinCodex\Rendering\Markdown;
 
 use FinityLabs\LinCodex\Rendering\Markdown\Attributes\CodexClassFilter;
+use FinityLabs\LinCodex\Rendering\Markdown\Attributes\HeadingIdFilter;
 use FinityLabs\LinCodex\Rendering\Markdown\Callout\CalloutExtension;
 use FinityLabs\LinCodex\Rendering\Markdown\Container\FencedContainerExtension;
 use FinityLabs\LinCodex\Rendering\Markdown\Figure\FigureExtension;
@@ -114,6 +115,7 @@ final class MarkdownPipeline
         $environment->addExtension(new ArticleLinkExtension($this->state));
 
         $environment->addEventListener(DocumentParsedEvent::class, [new CodexClassFilter, 'onDocumentParsed'], -10);
+        $environment->addEventListener(DocumentParsedEvent::class, [new HeadingIdFilter, 'onDocumentParsed'], -10);
         $environment->addRenderer(HeadingPermalink::class, new HeadingAnchorRenderer($this->state), 10);
 
         return $this->environment = $environment;

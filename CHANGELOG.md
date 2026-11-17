@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-11-17
+
+### Fixed
+
+- A Markdown heading with an author id, `## Heading {#custom}`, rendered `id="custom"` once a host installed league/commonmark 2.10.4 or newer, where every earlier release gave it the slug of its text. commonmark's permalink pass used to overwrite such an id and now keeps it, so the id skipped the slugger: the same heading text no longer gave the same id, and two headings could end up sharing one. `Rendering\Markdown\Attributes\HeadingIdFilter` removes the author id before the permalink pass runs, so a heading id is the slug of its text on every commonmark release. `RendererFingerprint::MARKUP_VERSION` is now 3, so articles cached under the newer commonmark render again; no cache clear is needed
+
 ## [0.4.4] - 2026-10-06
 
 ### Fixed

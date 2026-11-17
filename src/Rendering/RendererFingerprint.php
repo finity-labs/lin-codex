@@ -26,7 +26,7 @@ final class RendererFingerprint
      * CodexClassFilter (which is not an extension and so does not appear in
      * extensionClasses()), the heading pass, or the plain-text extractor.
      */
-    public const MARKUP_VERSION = 2;
+    public const MARKUP_VERSION = 3;
 
     public function __construct(
         private readonly MarkdownPipeline $markdown,

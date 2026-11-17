@@ -39,6 +39,13 @@ it('keeps author attribute syntax out of the table of contents', function (): vo
         ->not->toContain('custom');
 });
 
+it('leaves an author id where no heading id is generated', function (): void {
+    $html = (new MarkdownPipeline)->render("# Title {#top}\n\nText {#note}", 'en', 'intro')->html;
+
+    expect($html)->toContain('<h1 id="top">Title</h1>')
+        ->toContain('<p id="note">Text</p>');
+});
+
 it('resolves links from a section file against its folder', function (): void {
     $html = (new MarkdownPipeline)->render('[Roles](01-roles.md) and [Up](index.md) and [Home](../index.md)', 'en', 'users/index')->html;
 
